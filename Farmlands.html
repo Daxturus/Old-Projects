@@ -1,0 +1,2198 @@
+<canvas id="screen" width="760" height="360" />
+
+
+
+
+<script>
+    var screen = document.getElementById('screen');
+    var canvas = screen.getContext('2d');
+    var Plantables = [];
+    var Utilities = [];
+    var Plots = [];
+
+    var Tools = [];
+    var Bank = [];
+
+
+    var money = 70;
+    var stamina = 50;
+    var maxstamina = 50;
+    var MaxSoilUtils = 3;
+
+    var pumps = 0;
+    var reservoirs = 2;
+    var currwater = 10;
+    var CanTend = false;
+
+    var days = 1;
+    var season = 0; //spring -> summer -> fall -> winter
+    var year = 1;
+
+    var posX = 0;
+    var posY = 0;
+    var Warning = "";
+    var WarningTimer = 120;
+
+    var SleepTimer = 0;
+    var GoodWarning = false;
+    var LastPlanted = "Grass";
+    var LoanAmount = 0;
+
+
+
+    var sleepdone = false;
+    var sleepdone2 = false;
+
+    var TractorFrameOwned = false;
+    var TractorAutoPlant = -1;
+    var TractorAutoWater = -1;
+    var TractorAutoHarvest = -1;
+    var TractorMaxSpeed = 0; //max speed of tractor (holding the button down increases speed by 1)
+    var TractorComfort = 0; //0.5 = halved exhaustion from moving, 0.75 = 1/4 exhaustion from moving
+    var TractorPower = 0; //0.5 = halved exhaustion from working, 0.75 = 1/4 exhaustion from working
+    var TractorCurrentSpeed = 1;
+    var TractorAccelSteps = 0;
+
+    var FireSpread = 1;
+
+    //Game factors:
+    //First Cost
+    //Final Cost
+    //Time to grow
+
+    Utilities.push({
+
+        //Utility data.
+        //Remember that ID = place in stack.
+        Name: "Basic Fertilizer",
+        Cost: 5,
+        SpeedGrowth: 0,
+        CropHealth: 0, //directly increase/decrease crop health
+        LandCost: 0,
+        LandIrrigation: 0,
+        LandWaterRetention: 0,
+        LandGrowSpeed: 0,
+        TempCost: 7,
+        LandFertility: 0,
+        LandTemp: 0,
+        LandCropResistance: 0,
+        HasPermEffect: false
+
+
+
+    });
+    Utilities.push({
+
+        //Utility data.
+        //Remember that ID = place in stack.
+        Name: "Basic Mulch",
+        Cost: 12,
+        SpeedGrowth: 0,
+        CropHealth: 0, //directly increase/decrease crop health
+        LandCost: 0,
+        LandIrrigation: 0,
+        LandWaterRetention: 0,
+        LandGrowSpeed: 0,
+        TempCost: 0,
+        LandFertility: 1,
+        LandTemp: 0,
+        LandCropResistance: 0,
+        HasPermEffect: true
+
+
+
+    });
+    Utilities.push({
+
+        //Utility data.
+        //Remember that ID = place in stack.
+        Name: "Protective Mulch",
+        Cost: 18,
+        SpeedGrowth: 0,
+        CropHealth: 0, //directly increase/decrease crop health
+        LandCost: 0,
+        LandIrrigation: 0,
+        LandWaterRetention: 0,
+        LandGrowSpeed: 0,
+        TempCost: 0,
+        LandFertility: 0,
+        LandTemp: 0,
+        LandCropResistance: 0,
+        HasPermEffect: true
+
+
+
+    });
+    Utilities.push({
+
+        //Utility data.
+        //Remember that ID = place in stack.
+        Name: "Speed Fertilizer",
+        Cost: 14,
+        SpeedGrowth: 2,
+        CropHealth: 0, //directly increase/decrease crop health
+        LandCost: 0,
+        LandIrrigation: 0,
+        LandWaterRetention: 0,
+        LandGrowSpeed: 0,
+        TempCost: 0,
+        LandFertility: 0,
+        LandTemp: 0,
+        LandCropResistance: 0,
+        HasPermEffect: false
+
+    });
+    Utilities.push({
+
+        //Utility data.
+        //Remember that ID = place in stack.
+        Name: "Speed Mulch",
+        Cost: 17,
+        SpeedGrowth: 0,
+        CropHealth: 0, //directly increase/decrease crop health
+        LandCost: 0,
+        LandIrrigation: 0,
+        LandWaterRetention: 0,
+        LandGrowSpeed: 1,
+        TempCost: 0,
+        LandFertility: 0,
+        LandTemp: 0,
+        LandCropResistance: 0,
+        HasPermEffect: true
+
+    });
+    Utilities.push({
+
+        //Utility data.
+        //Remember that ID = place in stack.
+        Name: "Loamy Topsoil",
+        Cost: 20,
+        SpeedGrowth: 0,
+        CropHealth: 0, //directly increase/decrease crop health
+        LandCost: 1,
+        LandIrrigation: 0,
+        LandWaterRetention: 3,
+        LandGrowSpeed: 0,
+        TempCost: 0,
+        LandFertility: 0,
+        LandTemp: 0,
+        LandCropResistance: 0,
+        HasPermEffect: true
+
+
+
+    });
+    Utilities.push({
+
+        //Utility data.
+        //Remember that ID = place in stack.
+        Name: "Stony Topsoil",
+        Cost: 20,
+        SpeedGrowth: 0,
+        CropHealth: 0, //directly increase/decrease crop health
+        LandCost: 1,
+        LandIrrigation: 0,
+        LandWaterRetention: -3,
+        LandGrowSpeed: 0,
+        TempCost: 0,
+        LandFertility: 0,
+        LandTemp: 0,
+        LandCropResistance: 0,
+        HasPermEffect: true
+
+    });
+    Utilities.push({
+
+        //Utility data.
+        //Remember that ID = place in stack.
+        Name: "Lake Topsoil",
+        Cost: 20,
+        SpeedGrowth: 0,
+        CropHealth: 0, //directly increase/decrease crop health
+        LandCost: 1,
+        LandIrrigation: 1,
+        LandWaterRetention: -2,
+        LandGrowSpeed: 0,
+        TempCost: 0,
+        LandFertility: 0,
+        LandTemp: 0,
+        LandCropResistance: 0,
+        HasPermEffect: true
+
+    });
+    Utilities.push({
+
+        //Utility data.
+        //Remember that ID = place in stack.
+        Name: "Muddy Topsoil",
+        Cost: 20,
+        SpeedGrowth: 0,
+        CropHealth: 0, //directly increase/decrease crop health
+        LandCost: 0,
+        LandIrrigation: 1,
+        LandWaterRetention: 2,
+        LandGrowSpeed: 0,
+        TempCost: 0,
+        LandFertility: 0,
+        LandTemp: 0,
+        LandCropResistance: 0,
+        HasPermEffect: true
+
+    });
+    Utilities.push({
+
+        //Utility data.
+        //Remember that ID = place in stack.
+        Name: "Desert Topsoil",
+        Cost: 20,
+        SpeedGrowth: 0,
+        CropHealth: 0, //directly increase/decrease crop health
+        LandCost: 1,
+        LandIrrigation: -1,
+        LandWaterRetention: -2,
+        LandGrowSpeed: 0,
+        TempCost: 0,
+        LandFertility: 0,
+        LandTemp: 0,
+        LandCropResistance: 0,
+        HasPermEffect: true
+
+    });
+    Utilities.push({
+
+        //Utility data.
+        //Remember that ID = place in stack.
+        Name: "Silty Topsoil",
+        Cost: 20,
+        SpeedGrowth: 0,
+        CropHealth: 0, //directly increase/decrease crop health
+        LandCost: 1,
+        LandIrrigation: -1,
+        LandWaterRetention: 2,
+        LandGrowSpeed: 0,
+        TempCost: 0,
+        LandFertility: 0,
+        LandTemp: 0,
+        LandCropResistance: 0,
+        HasPermEffect: true
+
+    });
+    Utilities.push({
+
+        //Utility data.
+        //Remember that ID = place in stack.
+        Name: "Speed Mulch",
+        Cost: 17,
+        SpeedGrowth: 0,
+        CropHealth: 0, //directly increase/decrease crop health
+        LandCost: 0,
+        LandIrrigation: 0,
+        LandWaterRetention: 0,
+        LandGrowSpeed: 1,
+        TempCost: 0,
+        LandFertility: 0,
+        LandTemp: 0,
+        LandCropResistance: 0,
+        HasPermEffect: true
+
+    });
+    Utilities.push({
+
+        //Utility data.
+        //Remember that ID = place in stack.
+        Name: "Tender Fertilizer",
+        Cost: 6,
+        SpeedGrowth: -4,
+        CropHealth: 0, //directly increase/decrease crop health
+        LandCost: 0,
+        LandIrrigation: 0,
+        LandWaterRetention: 0,
+        LandGrowSpeed: 0,
+        TempCost: 14,
+        LandFertility: 0,
+        LandTemp: 0,
+        LandCropResistance: 0,
+        HasPermEffect: false
+
+    });
+    Utilities.push({
+
+        //Utility data.
+        //Remember that ID = place in stack.
+        Name: "Super Fertilizer",
+        Cost: 12,
+        SpeedGrowth: 4,
+        CropHealth: 0, //directly increase/decrease crop health
+        LandCost: -1,
+        LandIrrigation: 0,
+        LandWaterRetention: 0,
+        LandGrowSpeed: 0,
+        TempCost: 16,
+        LandFertility: -1,
+        LandTemp: 0,
+        LandCropResistance: -1,
+        HasPermEffect: false
+
+    });
+    Utilities.push({
+
+        //Utility data.
+        //Remember that ID = place in stack.
+        Name: "Super Mulch",
+        Cost: 19,
+        SpeedGrowth: 0,
+        CropHealth: 0, //directly increase/decrease crop health
+        LandCost: -3,
+        LandIrrigation: -1,
+        LandWaterRetention: -1,
+        LandGrowSpeed: 1,
+        TempCost: 0,
+        LandFertility: 2,
+        LandTemp: 0,
+        LandCropResistance: -3,
+        HasPermEffect: true
+
+    });
+    Utilities.push({
+
+        //Utility data.
+        //Remember that ID = place in stack.
+        Name: "Hyper Fertilizer",
+        Cost: 12,
+        SpeedGrowth: 7,
+        CropHealth: 0, //directly increase/decrease crop health
+        LandCost: -1,
+        LandIrrigation: 0,
+        LandWaterRetention: 0,
+        LandGrowSpeed: 0,
+        TempCost: 13,
+        LandFertility: -1,
+        LandTemp: 0,
+        LandCropResistance: 0,
+        HasPermEffect: false
+
+    });
+    Utilities.push({
+
+        //Utility data.
+        //Remember that ID = place in stack.
+        Name: "Hyper Mulch",
+        Cost: 19,
+        SpeedGrowth: 0,
+        CropHealth: 0, //directly increase/decrease crop health
+        LandCost: -2,
+        LandIrrigation: -1,
+        LandWaterRetention: 0,
+        LandGrowSpeed: 4,
+        TempCost: 0,
+        LandFertility: -1,
+        LandTemp: 0,
+        LandCropResistance: -1,
+        HasPermEffect: true
+
+    });
+    Utilities.push({
+
+        //Utility data.
+        //Remember that ID = place in stack.
+        Name: "Radioactive Fertilizer",
+        Cost: 20,
+        SpeedGrowth: 6,
+        CropHealth: 0, //directly increase/decrease crop health
+        LandCost: -1,
+        LandIrrigation: 0,
+        LandWaterRetention: 0,
+        LandGrowSpeed: -1,
+        TempCost: 45,
+        LandFertility: -2,
+        LandTemp: 0,
+        LandCropResistance: -2,
+        HasPermEffect: false
+
+    });
+
+
+
+
+    Plantables.push({
+
+        //Plant data.
+        //Remember that ID = place in stack.
+        Name: "Grass",
+        Cost: 0,
+        Color: '#738c4f',
+        FinalCost: 1,
+        DaysToGrow: 1,
+        WaterUse: 1,
+        CropHealth: 12, //days till death in bad conditions
+
+        //Permanent FX upon planting.
+        PlantLandCost: 0,
+        PlantLandIrrigation: 0,
+        PlantLandFertility: 0,
+        PlantLandCropResistance: 0,
+
+        LandCost: 0,
+        LandIrrigation: 0,
+        LandWaterRetention: 0,
+        LandGrowSpeed: 0,
+        LandFertility: 0,
+        LandTemp: 0,
+        LandCropResistance: 0,
+
+
+
+
+        //Temporary FX upon harvesting. (Removed after next harvest.)
+        TempCost: 0
+    });
+    Plantables.push({
+
+        //Plant data.
+        //Remember that ID = place in stack.
+        Name: "Wheatgrass",
+        Cost: 0,
+        Color: '#a5aa5d',
+        FinalCost: 3,
+        DaysToGrow: 2,
+        WaterUse: 2,
+        CropHealth: 6, //days till death in bad conditions
+
+        //Permanent FX upon planting.
+        PlantLandCost: 0,
+        PlantLandIrrigation: 0,
+        PlantLandFertility: 0,
+        PlantLandCropResistance: 0,
+
+        //Permanent FX upon harvesting.
+        LandCost: 0,
+        LandIrrigation: 0,
+        LandWaterRetention: 0,
+        LandGrowSpeed: 0,
+        LandFertility: 0,
+        LandTemp: 0,
+        LandCropResistance: 0,
+
+
+
+
+        //Temporary FX upon harvesting. (Removed after next harvest.)
+        TempCost: 0
+    });
+    Plantables.push({
+
+        //Plant data.
+        //Remember that ID = place in stack.
+        Name: "Beans",
+        Cost: 2,
+        Color: '#a9865d',
+        FinalCost: 18,
+        DaysToGrow: 12,
+        WaterUse: 3,
+        CropHealth: 12, //days till death in bad conditions
+
+        //Permanent FX upon planting.
+        PlantLandCost: 0,
+        PlantLandIrrigation: 0,
+        PlantLandFertility: 0,
+        PlantLandCropResistance: 0,
+
+        //Permanent FX upon harvesting.
+        LandCost: 0,
+        LandIrrigation: 0,
+        LandWaterRetention: 0,
+        LandGrowSpeed: 0,
+        LandFertility: 0,
+        LandTemp: 0,
+        LandCropResistance: 0,
+
+
+
+
+        //Temporary FX upon harvesting. (Removed after next harvest.)
+        TempCost: 0
+    });
+    Plantables.push({
+
+        //Plant data.
+        //Remember that ID = place in stack.
+        Name: "Potatoes",
+        Cost: 2,
+        Color: '#f9efc7',
+        FinalCost: 30,
+        DaysToGrow: 22,
+        WaterUse: 1,
+        CropHealth: 20, //days till death in bad conditions
+
+        //Permanent FX upon planting.
+        PlantLandCost: 0,
+        PlantLandIrrigation: 0,
+        PlantLandFertility: 0,
+        PlantLandCropResistance: 0,
+
+        //Permanent FX upon harvesting.
+        LandCost: 0,
+        LandIrrigation: 0,
+        LandWaterRetention: 0,
+        LandGrowSpeed: 0,
+        LandFertility: 0,
+        LandTemp: 0,
+        LandCropResistance: 0,
+
+
+
+
+        //Temporary FX upon harvesting. (Removed after next harvest.)
+        TempCost: 0
+    });
+    Plantables.push({
+
+        //Plant data.
+        //Remember that ID = place in stack.
+        Name: "Wheat",
+        Cost: 3,
+        Color: '#a5aa5d',
+        FinalCost: 150,
+        DaysToGrow: 70,
+        WaterUse: 2,
+        CropHealth: 12, //days till death in bad conditions
+
+        //Permanent FX upon planting.
+        PlantLandCost: 0,
+        PlantLandIrrigation: 0,
+        PlantLandFertility: 0,
+        PlantLandCropResistance: 0,
+
+        //Permanent FX upon harvesting.
+        LandCost: 0,
+        LandIrrigation: 0,
+        LandWaterRetention: 0,
+        LandGrowSpeed: 0,
+        LandFertility: 0,
+        LandTemp: 0,
+        LandCropResistance: 0,
+
+
+
+
+        //Temporary FX upon harvesting. (Removed after next harvest.)
+        TempCost: 0
+    });
+    Plantables.push({
+
+        //Plant data.
+        //Remember that ID = place in stack.
+        Name: "Cabbage",
+        Cost: 5,
+        Color: '#deffce',
+        FinalCost: 60,
+        DaysToGrow: 20,
+        WaterUse: 3,
+        CropHealth: 3, //days till death in bad conditions
+
+        //Permanent FX upon planting.
+        PlantLandCost: 0,
+        PlantLandIrrigation: 0,
+        PlantLandFertility: 0,
+        PlantLandCropResistance: 0,
+
+        //Permanent FX upon harvesting.
+        LandCost: 0,
+        LandIrrigation: 0,
+        LandWaterRetention: 0,
+        LandGrowSpeed: 0,
+        LandFertility: 0,
+        LandTemp: 0,
+        LandCropResistance: 0,
+
+
+
+
+        //Temporary FX upon harvesting. (Removed after next harvest.)
+        TempCost: 0
+    });
+    Plantables.push({
+
+        //Plant data.
+        //Remember that ID = place in stack.
+        Name: "Wildberries",
+        Cost: 2,
+        Color: '#6ac1a4',
+        FinalCost: 45,
+        DaysToGrow: 20,
+        WaterUse: 3,
+        CropHealth: 15, //days till death in bad conditions
+
+        //Permanent FX upon planting.
+        PlantLandCost: 0,
+        PlantLandIrrigation: 0,
+        PlantLandFertility: 0,
+        PlantLandCropResistance: 0,
+
+        //Permanent FX upon harvesting.
+        LandCost: 0,
+        LandIrrigation: 0,
+        LandWaterRetention: 0,
+        LandGrowSpeed: 0,
+        LandFertility: 0,
+        LandTemp: 0,
+        LandCropResistance: 0,
+
+
+
+
+        //Temporary FX upon harvesting. (Removed after next harvest.)
+        TempCost: 0
+    });
+    Plantables.push({
+
+        //Plant data.
+        //Remember that ID = place in stack.
+        Name: "Mushrooms",
+        Cost: 7,
+        Color: '#664134',
+        FinalCost: 12,
+        DaysToGrow: 6,
+        WaterUse: 1,
+        CropHealth: 6, //days till death in bad conditions
+
+        //Permanent FX upon planting.
+        PlantLandCost: 0,
+        PlantLandIrrigation: 0,
+        PlantLandFertility: 0,
+        PlantLandCropResistance: 0,
+
+        //Permanent FX upon harvesting.
+        LandCost: 0,
+        LandIrrigation: 0,
+        LandWaterRetention: 0,
+        LandGrowSpeed: 0,
+        LandFertility: 0,
+        LandTemp: 0,
+        LandCropResistance: 0,
+
+
+
+
+        //Temporary FX upon harvesting. (Removed after next harvest.)
+        TempCost: 0
+    });
+
+
+
+
+
+    Plots.push({
+        //Permanent FX upon harvesting.
+
+        //Ground upgrades.
+        owned: true,
+        x: 0,
+        y: 0,
+        LandUpgrades: [],
+        MaxHydration: 30,
+        Building: "Cottage",
+        AvgTemp: 3, //1. cold, 2. cool, 3.temperate, 4. warm, 5. hot
+        Irrigation: 1,
+        Runoff: 2, //bigger numbers drain water into lower numbers faster
+        LandCost: 5,
+        CropHealth: 0,
+        Tendedness: 0,
+
+        //Ground data.
+        Hydration: 20,
+        Temperature: 3,
+        Fertility: 0,
+        FireTimer: -1,
+        UpgradeCount: -1, //extra upgrade because we're nice
+
+        //Plant data.
+        ID: -1, //no crop growing.
+        DaysToGrow: 0,
+        FinalCost: 0,
+        DaysGrowing: 0,
+        CurrWaterUse: 0,
+        CurrentCost: 0,
+
+
+        //bonuses.
+        TempCost: 0,
+        TempGrowthTime: 0,
+        PermGrowthTime: 0,
+        PermCropResistanceBonus: 0
+
+
+
+
+
+
+    });
+    var SleepApplied = false;
+    var GotStaminaUp = false;
+    var sleep = false;
+    var shop = false;
+    var OptionsAvailable = [];
+    var IsInSleep = false;
+    document.addEventListener("keypress", function (event) {
+        if (!sleep && !shop) {
+            if (event.key == 'd') {
+                posX += TractorCurrentSpeed;
+                if (stamina >= (TractorCurrentSpeed - 1) && Math.random() > TractorComfort) {
+                    stamina -= TractorCurrentSpeed;
+                }
+                if (TractorCurrentSpeed < TractorMaxSpeed + 1 && TractorAccelSteps >= TractorCurrentSpeed * 2) {
+                    TractorCurrentSpeed++;
+                    TractorAccelSteps = 0;
+                }
+                else if (TractorCurrentSpeed < TractorMaxSpeed + 1 && TractorAccelSteps < TractorCurrentSpeed * 2) {
+                    TractorAccelSteps++;
+                }
+            }
+            else if (event.key == 'a') {
+                posX -= TractorCurrentSpeed;
+                if (stamina > 0 && Math.random() > TractorComfort) {
+                    stamina -= TractorCurrentSpeed;
+                }
+                if (TractorCurrentSpeed < TractorMaxSpeed + 1 && TractorAccelSteps >= TractorCurrentSpeed * 2 + 1) {
+                    TractorCurrentSpeed++;
+                    TractorAccelSteps = 0;
+                }
+                else if (TractorCurrentSpeed < TractorMaxSpeed + 1 && TractorAccelSteps >= TractorCurrentSpeed * 2 + 1) {
+                    TractorAccelSteps++;
+                }
+            }
+            else if (event.key == 's') {
+                posY += TractorCurrentSpeed;
+                if (stamina > 0 && Math.random() > TractorComfort) {
+                    stamina -= TractorCurrentSpeed;
+                }
+                if (TractorCurrentSpeed < TractorMaxSpeed + 1 && TractorAccelSteps >= TractorCurrentSpeed * 2 + 1) {
+                    TractorCurrentSpeed++;
+                    TractorAccelSteps = 0;
+                }
+                else if (TractorCurrentSpeed < TractorMaxSpeed + 1 && TractorAccelSteps >= TractorCurrentSpeed * 2 + 1) {
+                    TractorAccelSteps++;
+                }
+            }
+            else if (event.key == 'w') {
+                posY -= TractorCurrentSpeed;
+                if (stamina > 0 && Math.random() > TractorComfort) {
+                    stamina -= TractorCurrentSpeed;
+                }
+                if (TractorCurrentSpeed < TractorMaxSpeed + 1 && TractorAccelSteps >= TractorCurrentSpeed * 2 + 1) {
+                    TractorCurrentSpeed++;
+                    TractorAccelSteps = 0;
+                }
+                else if (TractorCurrentSpeed < TractorMaxSpeed + 1 && TractorAccelSteps >= TractorCurrentSpeed * 2 + 1) {
+                    TractorAccelSteps++;
+                }
+            }
+            if (event.key == 'h' && FindPlot() >= 0) {
+                if (Plots[FindPlot()].ID < 0) {
+                    Warning = "There isn't anything planted here.";
+                    WarningTimer = 120;
+                }
+                else if (stamina >= Math.round(10 * (1 - TractorPower)) && Plots[FindPlot()].FireTimer < 0) {
+                    stamina -= Math.round(10 * (1 - TractorPower));
+                    if (Plots[FindPlot()].CurrentCost != null) {
+                        money += Plots[FindPlot()].CurrentCost;
+                        if (Plots[FindPlot()].DaysGrowing >= Plots[FindPlot()].DaysToGrow && CanTend && Plots[FindPlot()].Tendedness > 0) {
+                            money += Math.round(Math.sqrt((Plots[FindPlot()].Tendedness / Plots[FindPlot()].FinalCost)));
+                        }
+                        Plots[FindPlot()].Irrigation += Plantables[Plots[FindPlot()].ID].LandIrrigation;
+                        Plots[FindPlot()].Fertility += Plantables[Plots[FindPlot()].ID].LandFertility;
+                        Plots[FindPlot()].LandCost += Plantables[Plots[FindPlot()].ID].LandCost;
+                        Plots[FindPlot()].MaxHydration += Plantables[Plots[FindPlot()].ID].LandWaterRetention;
+                        Plots[FindPlot()].PermCropResistanceBonus += Plantables[Plots[FindPlot()].ID].LandCropResistance;
+                        Plots[FindPlot()].PermGrowthTime += Plantables[Plots[FindPlot()].ID].LandGrowSpeed;
+                        Plots[FindPlot()].DaysGrowing = 0;
+                        Plots[FindPlot()].CurrentCost = 0;
+			Plots[FindPlot()].Tendedness = 0;
+                    }
+                    Plots[FindPlot()].ID = -1;
+
+
+                }
+                else if (stamina >= Math.round(10 * (1 - TractorPower)) && Plots[FindPlot()].FireTimer >= 0) {
+                    Warning = "The plot is on fire! You can't harvest it now!";
+                    WarningTimer = 120;
+                }
+                else if (stamina < Math.round(10 * (1 - TractorPower)) && Plots[FindPlot()].FireTimer < 0) {
+                    Warning = "You don't have enough energy to do this.";
+                    WarningTimer = 120;
+                }
+            }
+            if (event.key == 't' && CanTend && FindPlot() >= 0) {
+                if (Plots[FindPlot()].ID < 0) {
+                    Warning = "Nothing is planted here.";
+                    WarningTimer = 120;
+                }
+                else if (stamina >= Math.round(5 * (1 - TractorPower))) {
+                    if (Math.random() < Math.pow(2, -(Plots[FindPlot()].Tendedness + 1))) {
+                        GoodWarning = true;
+                        Warning = "You successfully tended your crop.";
+                        WarningTimer = 120;
+                        Plots[FindPlot()].Tendedness += 1;
+                        Plots[FindPlot()].CropHealth += 1;
+                        stamina -= Math.round(5 * Math.sqrt(1 - TractorPower));
+
+                    }
+                    else {
+                        GoodWarning = true;
+                        Warning = "Tending the plant was unsuccessful...";
+                        WarningTimer = 120;
+                        stamina -= Math.round(5 * Math.sqrt(1 - TractorPower));
+                    }
+                }
+                else {
+                    Warning = "You don't have enough energy to do this right now.";
+                    WarningTimer = 120;
+                }
+
+            }
+            if (event.key == 'p' && FindPlot() >= 0) {
+                if (Plots[FindPlot()].ID >= 0) {
+                    Warning = "Something is planted here already.";
+                    WarningTimer = 120;
+                }
+                else if (stamina >= Math.round(10 * (1 - TractorPower))) {
+                    var Y = Math.ceil(Math.random() * Plantables.length) - 1;
+                    if (Y < 0) {
+                        Y = 0;
+                    }
+                    var X = Plantables[Y].Name;
+                    var input = window.prompt("What would you like to plant? Ex: " + X, LastPlanted);
+                    var valid = false;
+                    if (input != null) {
+                        for (var i = 0; i < Plantables.length; i++) {
+                            if (input.toLowerCase() == Plantables[i].Name.toLowerCase()) {
+                                valid = true;
+                                if (money >= Plantables[i].Cost) {
+                                    stamina -= Math.round(10 * (1 - TractorPower));
+                                    LastPlanted = Plantables[i].Name;
+                                    money -= Plantables[i].Cost;
+                                    Plots[FindPlot()].ID = i;
+                                    Plots[FindPlot()].FinalCost = Plantables[i].FinalCost + Plots[FindPlot()].Fertility;
+                                    Plots[FindPlot()].DaysToGrow = Plantables[i].DaysToGrow - Plots[FindPlot()].PermGrowthTime;
+                                    Plots[FindPlot()].CurrWaterUse = Plantables[i].WaterUse;
+                                    Plots[FindPlot()].CropHealth = Plantables[i].CropHealth + Plots[FindPlot()].PermCropResistanceBonus;
+                                    Plots[FindPlot()].LandCost += Plantables[i].PlantLandCost;
+                                    Plots[FindPlot()].Irrigation += Plantables[i].PlantLandIrrigation;
+                                    Plots[FindPlot()].Fertility += Plantables[i].PlantLandFertility;
+                                    Plots[FindPlot()].PermCropResistanceBonus += Plantables[i].PlantLandCropResistance;
+                                    Plots[FindPlot()].PermGrowthTime += Plantables[i].LandGrowSpeed;
+                                    Plots[FindPlot()].PermGrowthTime += Plantables[i].LandGrowSpeed;
+                                    GoodWarning = true;
+                                    Warning = "You planted " + Plantables[i].Name.toLowerCase() + ".";
+                                    WarningTimer = 120;
+                                    i = Plantables.length + 1;
+                                    Plots[FindPlot()].DaysGrowing = 0;
+                                    Plots[FindPlot()].CurrentCost = 0;
+                                }
+                                else {
+                                    Warning = "You don't have enough money to buy that plant.";
+                                    WarningTimer = 120;
+                                }
+
+
+
+
+                            }
+                        }
+                        if (!valid) {
+                            Warning = "There isn't a plant with that name.";
+                            WarningTimer = 120;
+                        }
+                    }
+
+
+                }
+                else {
+                    Warning = "You don't have enough energy to do this.";
+                    WarningTimer = 120;
+                }
+            }
+            if (event.key == 'u' && FindPlot() >= 0 && Plots[FindPlot()].UpgradeCount < MaxSoilUtils) {
+                if (Plots[FindPlot()].ID >= 0) {
+                    Warning = "Something is planted here already.";
+                    WarningTimer = 120;
+                }
+                else if (stamina >= Math.round(1 * (1 - TractorPower))) {
+                    var Y = Math.ceil(Math.random() * Utilities.length) - 1;
+                    if (Y < 0) {
+                        Y = 0;
+                    }
+                    var X = Utilities[Y].Name;
+                    var input = window.prompt("Which utility would you like to use? Ex: " + X, "Basic Fertilizer");
+                    var valid = false;
+                    if (input != null) {
+                        for (var i = 0; i < Utilities.length; i++) {
+                            if (input.toLowerCase() == Utilities[i].Name.toLowerCase()) {
+                                valid = true;
+                                if (money >= Utilities[i].Cost) {
+                                    stamina -= Math.round(1 * (1 - TractorPower));
+                                    money -= Utilities[i].Cost;
+                                    //SpeedGrowth 0, //
+                                    //CropHealth 0, //directly increase/decrease crop health
+                                    Plots[FindPlot()].LandCost += Utilities[i].LandCost,
+                                        Plots[FindPlot()].Irrigation += Utilities[i].LandIrrigation,
+                                        Plots[FindPlot()].MaxHydration += Utilities[i].LandWaterRetention,
+                                        Plots[FindPlot()].PermGrowthTime += Utilities[i].LandGrowSpeed,
+                                        //TempCost: 0,
+                                        Plots[FindPlot()].Fertility += Utilities[i].LandFertility,
+                                        //LandTemp: 0,
+                                        Plots[FindPlot()].PermCropResistanceBonus += Utilities[i].LandCropResistance;
+                                    GoodWarning = true;
+                                    Warning = "You used some " + Utilities[i].Name.toLowerCase() + ".";
+                                    WarningTimer = 120;
+                                    if (Utilities[i].HasPermEffect == true) {
+                                        Plots[FindPlot()].UpgradeCount++;
+                                    }
+                                    i = Utilities.length + 1;
+                                    Plots[FindPlot()].DaysGrowing = 0;
+                                    Plots[FindPlot()].CurrentCost = 0;
+                                }
+                                else {
+                                    Warning = "You don't have enough money to buy that.";
+                                    WarningTimer = 120;
+                                }
+
+
+
+
+                            }
+                        }
+                        if (!valid) {
+                            Warning = "There isn't a plant with that name.";
+                            WarningTimer = 120;
+                        }
+                    }
+
+                }
+                else {
+                    Warning = "You don't have enough energy to do this.";
+                    WarningTimer = 120;
+                }
+            }
+            if (event.key == 'g') {
+
+                if (stamina >= Math.round(4 * (1 - TractorPower))) {
+                    if (currwater <= reservoirs * 5 - 2) {
+                        var handpumps = 0;
+                        for (var i = 0; i < Plots[FindPlot()].LandUpgrades.length; i++) {
+                            if (Plots[FindPlot()].LandUpgrades[i].toLowerCase() == "hand pump") {
+                                handpumps++;
+                            }
+                        }
+                        stamina -= Math.round(4 * (1 - TractorPower));
+                        currwater += 2 + handpumps;
+                        GoodWarning = true;
+                        Warning = "You gathered water.";
+                        WarningTimer = 120;
+                        if (currwater > reservoirs * 5) {
+                            currwater = reservoirs * 5;
+                        }
+                    }
+                    else {
+                        Warning = "You don't have enough room for water.";
+                        WarningTimer = 120;
+                    }
+                }
+                else {
+                    Warning = "You don't have enough energy to do this.";
+                    WarningTimer = 120;
+                }
+            }
+            if (OptionsAvailable.includes("X] Go to sleep") && event.key == 'x') {
+                if (FindPlot() >= 0) {
+                    if (Plots[FindPlot()].Building == "Cottage" || Plots[FindPlot()].Building == "Inn") {
+                        if (Plots[FindPlot()].Hydration < Plots[FindPlot()].MaxHydration * 1.2) {
+                            if (Plots[FindPlot()].FireTimer < 0) {
+                                if (SleepTimer <= 0 && stamina < maxstamina) {
+                                    sleep = true;
+                                    SleepTimer = 300;
+                                }
+                                else {
+                                    Warning = "You can't sleep so soon!";
+                                    WarningTimer = 120;
+                                }
+                            }
+                            else {
+                                Warning = "The cottage on this plot is on fire!";
+                                WarningTimer = 120;
+                            }
+                        }
+                        else {
+                            Warning = "The cottage on this plot is flooded; you can't sleep on it.";
+                            WarningTimer = 120;
+                        }
+
+
+                    }
+                }
+            }
+            if (OptionsAvailable.includes("K] Water Land") && event.key == 'k' && FindPlot() >= 0) {
+                if (stamina >= Math.round(2 * (1 - TractorPower))) {
+
+                    if (currwater > 0) {
+                        Plots[FindPlot()].Hydration += 1;
+                        currwater -= 1;
+                        stamina -= Math.round(2 * (1 - TractorPower));
+                        GoodWarning = true;
+                        Warning = "You watered your crops.";
+                        WarningTimer = 120;
+                    }
+                    else {
+
+                        Warning = "You don't have enough water in your reservoir to do this.";
+                        WarningTimer = 120;
+                    }
+                    if (currwater > 0 && currwater < reservoirs * 5) {
+                        Plots[FindPlot()].Hydration += 1;
+                        currwater -= 1;
+                        stamina -= Math.round(2 * (1 - TractorPower));
+                    }
+                }
+                else {
+                    Warning = "You don't have enough energy to do this.";
+                    WarningTimer = 120;
+                }
+            }
+            if (OptionsAvailable.includes("B] Buy this plot") && event.key == 'b') {
+                if (money >= 20) {
+                    if (FindPlot() < 0) {
+                        money -= 20;
+                        Plots.push({
+
+                            //Ground upgrades.
+                            owned: true,
+                            x: posX + 2,
+                            y: posY,
+                            LandUpgrades: [],
+                            MaxHydration: Math.ceil(Math.random() * 35),
+                            Building: "",
+                            AvgTemp: 3, //1. cold, 2. cool, 3.temperate, 4. warm, 5. hot
+                            Irrigation: Math.ceil(Math.random() * 3) + Math.floor(Math.random() * 2),
+                            Runoff: 2, //bigger numbers drain water into lower numbers faster
+                            LandCost: 12 + Math.ceil(Math.random() * 10),
+                            CropHealth: 0,
+                            Tendedness: 0,
+
+                            //Ground data.
+                            Hydration: Math.ceil(Math.random() * 10),
+                            Temperature: Math.round(Math.random() * 5),
+                            Fertility: Math.floor(Math.random() * 1.2) + Math.floor(Math.random() * 1.1),
+                            FireTimer: -1,
+                            UpgradeCount: 0,
+
+                            //Plant data.
+                            ID: -1, //no crop growing.
+                            DaysToGrow: 0,
+                            FinalCost: 0,
+                            DaysGrowing: 0,
+                            CurrWaterUse: 0,
+                            CurrentCost: 0,
+
+
+                            //bonuses.
+                            TempCost: 0,
+                            TempGrowthTime: 0,
+                            PermGrowthTime: 0,
+                            PermCropResistanceBonus: 0
+
+
+
+
+
+
+
+
+                        });
+                    }
+                    else {
+                        Warning = "This plot is already purchased.";
+                        WarningTimer = 120;
+                    }
+                }
+                else {
+
+                    Warning = "You don't have enough money to buy this plot!.";
+                    WarningTimer = 120;
+                }
+
+            }
+            if (OptionsAvailable.includes("K] Water Crop") && event.key == 'k' && currwater > 0) {
+                if (stamina >= Math.round(2 * (1 - TractorPower))) {
+                    if (currwater > 0) {
+                        Plots[FindPlot()].Hydration += 1;
+                        currwater -= 1;
+                        stamina -= Math.round(2 * (1 - TractorPower));
+                        GoodWarning = true;
+                        Warning = "You watered your crops.";
+                        WarningTimer = 120;
+                    }
+                    else {
+
+                        Warning = "You don't have enough water in your reservoir to do this.";
+                        WarningTimer = 120;
+                    }
+                    if (currwater > 0 && stamina >= Math.round(2 * (1 - TractorPower)) && currwater < reservoirs * 5) {
+                        Plots[FindPlot()].Hydration += 1;
+                        currwater -= 1;
+                        stamina -= Math.round(2 * (1 - TractorPower));
+                    }
+                }
+                else {
+                    Warning = "You don't have enough energy to do this.";
+                    WarningTimer = 120;
+                }
+            }
+            if (OptionsAvailable.includes("L] Scoop Water") && event.key == 'l') {
+                if (stamina >= Math.round(5 * (1 - TractorPower))) {
+                    Plots[FindPlot()].Hydration -= 2;
+                    currwater += 1;
+                    stamina -= Math.round(5 * (1 - TractorPower));
+                    if (currwater > reservoirs * 5) {
+                        currwater = reservoirs * 5;
+                    }
+                    GoodWarning = true;
+                    Warning = "You scooped up water from the flooded plot.";
+                    WarningTimer = 120;
+                }
+                else {
+                    Warning = "You don't have enough energy to do this.";
+                    WarningTimer = 120;
+                }
+            }
+        }
+        if (event.key == 'z' && sleep) {
+            sleep = false;
+            SleepApplied = false;
+            GotStaminaUp = false;
+            sleepdone = false;
+            sleepdone2 = false;
+	    IsInSleep = false;
+        }
+        else if (event.key == 'z' && !sleep && !shop) {
+            shop = true;
+        }
+        if (event.key == 'b' && shop) {
+            if (money >= 10) {
+                reservoirs += 1;
+                money -= 10;
+            }
+            else {
+                Warning = "You don't have enough money to buy a reservoir.";
+                WarningTimer = 120;
+            }
+        }
+        if (event.key == 'c' && shop) {
+            if (money >= 15) {
+                pumps += 1;
+                money -= 15;
+            }
+            else {
+                Warning = "You don't have enough money to buy a pump.";
+                WarningTimer = 120;
+            }
+        }
+        if (event.key == 'd' && shop) {
+            if (money >= 10) {
+                Plots[FindPlot()].LandUpgrades.push("Sprinkler");
+                money -= 10;
+            }
+            else {
+                Warning = "You don't have enough money to buy a sprinkler.";
+                WarningTimer = 120;
+            }
+        }
+        if (event.key == 'e' && shop) {
+            if (money >= 15) {
+                Plots[FindPlot()].LandUpgrades.push("Drain");
+                money -= 15;
+            }
+            else {
+                Warning = "You don't have enough money to buy a drain.";
+                WarningTimer = 120;
+            }
+        }
+        if (event.key == '1' && shop) {
+            if (money >= 10) {
+                CanTend = true;
+                money -= 10;
+            }
+            else {
+                Warning = "You don't have enough money to buy these tools.";
+                WarningTimer = 120;
+            }
+        }
+        if (event.key == 'X' && shop && FindPlot() >= 0 && Plots[FindPlot()].Building != "") {
+            Plots[FindPlot()].Building = "";
+        }
+        if (event.key == '=' && shop && FindPlot() >= 0 && Plots[FindPlot()].Building == "") {
+            var cottages = 0;
+            for (var i = 0; i < Plots.length; i++) {
+                if (Plots[i].Building == "") {
+                    if (Plots[i].Hydration < Plots[i].MaxHydration * 1.5 && stamina > 5 && Plots[i].FireTimer <= 0) {
+                        cottages++;
+                    }
+                }
+            }
+            if (Plots[FindPlot()].Building != "") {
+                Warning = "There's already a building here.";
+                WarningTimer = 120;
+            }
+            else {
+                if (money >= (cottages * 10)) {
+                    Plots[FindPlot()].Building = "Cottage";
+                    money -= (cottages * 10) - 10;
+                }
+                else {
+                    Warning = "You don't have enough money to buy a cottage.";
+                    WarningTimer = 120;
+                }
+            }
+        }
+        if (event.key == ',' && shop && FindPlot() >= 0 && Plots[FindPlot()].Building == "") {
+            if (Plots[FindPlot()].Building != "") {
+                Warning = "There's already a building here.";
+                WarningTimer = 120;
+            }
+            else {
+                if (money >= 150) {
+                    Plots[FindPlot()].Building = "Warehouse";
+                    money -= 150;
+                }
+                else {
+                    Warning = "You don't have enough money to buy a new warehouse.";
+                    WarningTimer = 120;
+                }
+            }
+        }
+        if (event.key == '=' && shop && FindPlot() >= 0 && Plots[FindPlot()].Building == "Warehouse") {
+            if (money >= 100) {
+                Plots[FindPlot()].Building = "Inn";
+                money -= 100;
+            }
+            else {
+                Warning = "You don't have enough money to convert this.";
+                WarningTimer = 120;
+            }
+        }
+        if (event.key == '@' && shop && FindPlot() >= 0 && Plots[FindPlot()].Building == "Warehouse" && days > 50) {
+            if (money >= 200) {
+                Plots[FindPlot()].Building = "Greenhouse";
+                money -= 200;
+            }
+            else {
+                Warning = "You don't have enough money to convert this.";
+                WarningTimer = 120;
+            }
+        }
+        if (event.key == '.' && shop && FindPlot() >= 0 && Plots[FindPlot()].Building == "Warehouse" && days > 150) {
+            if (money >= 400) {
+                Plots[FindPlot()].Building = "SoilLab";
+                money -= 400;
+            }
+            else {
+                Warning = "You don't have enough money to convert this.";
+                WarningTimer = 120;
+            }
+        }
+        if (event.key == '{' && shop && FindPlot() >= 0 && Plots[FindPlot()].Building == "Warehouse" && days > 200) {
+            if (money >= 1200) {
+                Plots[FindPlot()].Building = "SeedLab";
+                money -= 1200;
+            }
+            else {
+                Warning = "You don't have enough money to convert this.";
+                WarningTimer = 120;
+            }
+        }
+        if (event.key == '/' && shop && FindPlot() >= 0 && Plots[FindPlot()].Building == "Warehouse" && days > 250) {
+            if (money >= 2000) {
+                Plots[FindPlot()].Building = "FirefightingStation";
+                money -= 2000;
+            }
+            else {
+                Warning = "You don't have enough money to convert this.";
+                WarningTimer = 120;
+            }
+        }
+        if (event.key == '}' && shop && FindPlot() >= 0 && Plots[FindPlot()].Building == "Warehouse" && days > 350) {
+            if (money >= 4000) {
+                Plots[FindPlot()].Building = "GMOLab";
+                money -= 4000;
+            }
+            else {
+                Warning = "You don't have enough money to convert this.";
+                WarningTimer = 120;
+            }
+        }
+        if (event.key == '0' && shop && FindPlot() >= 0) {
+            if (LoanAmount <= 0) {
+                LoanAmount += 25;
+                money += 20;
+            }
+            else {
+                if (money > 0) {
+                    LoanAmount -= 1;
+                }
+                else {
+                    Warning = "You don't have enough money to repay this loan.";
+                    WarningTimer = 120;
+                }
+            }
+        }
+        if (event.key == 'a' && shop) {
+            shop = false;
+        }
+        if (event.key == 'f' && shop) {
+            if (money >= 4) {
+                Plots[FindPlot()].LandUpgrades.push("Hand Pump");
+                money -= 4;
+            }
+            else {
+                Warning = "You don't have enough money to buy a new hand pump.";
+                WarningTimer = 120;
+            }
+        }
+        if (event.key == 'g' && shop && TractorFrameOwned && TractorAutoPlant < 0) {
+            if (money >= 50) {
+                TractorAutoPlant = 0;
+                money -= 50;
+            }
+            else {
+                Warning = "You don't have enough money to buy this upgrade.";
+                WarningTimer = 120;
+            }
+        }
+        if (event.key == 'g' && shop && !TractorFrameOwned) {
+            if (money >= 100) {
+                TractorFrameOwned = true;
+                money -= 100;
+            }
+            else {
+                Warning = "You don't have enough money to buy a tractor frame.";
+                WarningTimer = 120;
+            }
+        }
+        if (event.key == 'h' && shop && TractorFrameOwned && TractorAutoWater < 0) {
+            if (money >= 50) {
+                TractorAutoWater = 0;
+                money -= 50;
+            }
+            else {
+                Warning = "You don't have enough money to buy this upgrade.";
+                WarningTimer = 120;
+            }
+        }
+        if (event.key == 'i' && shop && TractorFrameOwned && TractorAutoHarvest < 0) {
+            if (money >= 50) {
+                TractorAutoHarvest = 0;
+                money -= 50;
+            }
+            else {
+                Warning = "You don't have enough money to buy this upgrade.";
+                WarningTimer = 120;
+            }
+        }
+        if (event.key == 'g' && shop && TractorFrameOwned && TractorAutoPlant < 0) {
+            if (money >= 50) {
+                TractorAutoPlant = 0;
+                money -= 50;
+            }
+            else {
+                Warning = "You don't have enough money to buy this upgrade.";
+                WarningTimer = 120;
+            }
+        }
+        if (event.key == 'j' && shop && TractorFrameOwned) {
+            if (money >= 50) {
+                TractorMaxSpeed += 1;
+                money -= 50;
+            }
+            else {
+                Warning = "You don't have enough money to buy this upgrade.";
+                WarningTimer = 120;
+            }
+        }
+        if (event.key == 'k' && shop && TractorFrameOwned) {
+            if (money >= 50) {
+                TractorPower += (1 - TractorPower) / 3;
+                money -= 50;
+            }
+            else {
+                Warning = "You don't have enough money to buy this upgrade.";
+                WarningTimer = 120;
+            }
+        }
+        if (event.key == 'l' && shop && TractorFrameOwned) {
+            if (money >= 20) {
+                TractorComfort += (1 - TractorComfort) / 2;
+                money -= 20;
+            }
+            else {
+                Warning = "You don't have enough money to buy this upgrade.";
+                WarningTimer = 120;
+            }
+        }
+        if (event.key == '1' && !shop && TractorFrameOwned && TractorAutoHarvest >= 0) {
+            TractorAutoHarvest = TractorAutoHarvest == 0 ? 1 : 0;
+        }
+        if (event.key == '2' && !shop && TractorFrameOwned && TractorAutoWater >= 0) {
+            TractorAutoWater = TractorAutoWater == 0 ? 1 : 0;
+        }
+        if (event.key == '3' && !shop && TractorFrameOwned && TractorAutoPlant >= 0) {
+            TractorAutoPlant = TractorAutoPlant == 0 ? 1 : 0;
+        }
+        if (FindPlot() >= 0 && TractorFrameOwned && TractorAutoHarvest == 1) {
+            if (Plots[FindPlot()].ID >= 0 && stamina >= Math.round(10 * (1 - TractorPower)) && Plots[FindPlot()].FireTimer < 0 && Plots[FindPlot()].DaysGrowing >= Plots[FindPlot()].DaysToGrow) {
+                stamina -= Math.round(10 * (1 - TractorPower));
+                if (Plots[FindPlot()].CurrentCost != null) {
+                    money += Plots[FindPlot()].CurrentCost;
+                    if (Plots[FindPlot()].DaysGrowing >= Plots[FindPlot()].DaysToGrow && CanTend && Plots[FindPlot()].Tendedness > 0) {
+                        money += Math.round(Math.sqrt((Plots[FindPlot()].Tendedness / Plots[FindPlot()].FinalCost)));
+                    }
+                    Plots[FindPlot()].Irrigation += Plantables[Plots[FindPlot()].ID].LandIrrigation;
+                    Plots[FindPlot()].Fertility += Plantables[Plots[FindPlot()].ID].LandFertility;
+                    Plots[FindPlot()].LandCost += Plantables[Plots[FindPlot()].ID].LandCost;
+                    Plots[FindPlot()].MaxHydration += Plantables[Plots[FindPlot()].ID].LandWaterRetention;
+                    Plots[FindPlot()].PermCropResistanceBonus += Plantables[Plots[FindPlot()].ID].LandCropResistance;
+                    Plots[FindPlot()].PermGrowthTime += Plantables[Plots[FindPlot()].ID].LandGrowSpeed;
+                    Plots[FindPlot()].DaysGrowing = 0;
+                    Plots[FindPlot()].CurrentCost = 0;
+                }
+                Plots[FindPlot()].ID = -1;
+            }
+        }
+        if (FindPlot() >= 0 && TractorFrameOwned && TractorAutoWater == 1) {
+            if (stamina >= Math.round(2 * (1 - TractorPower)) && Plots[FindPlot()].Hydration <= Plots[FindPlot()].MaxHydration) {
+                if (currwater > 0) {
+                    Plots[FindPlot()].Hydration += 1;
+                    currwater -= 1;
+                    stamina -= Math.round(2 * (1 - TractorPower));
+                }
+                if (currwater > 0 && stamina >= Math.round(2 * (1 - TractorPower)) && currwater < reservoirs * 5) {
+                    Plots[FindPlot()].Hydration += 1;
+                    currwater -= 1;
+                    stamina -= Math.round(2 * (1 - TractorPower));
+                }
+            }
+            else if (stamina >= Math.round(4 * (1 - TractorPower)) && Plots[FindPlot()].Hydration > Plots[FindPlot()].MaxHydration + 1) {
+                if (currwater > 0) {
+                    Plots[FindPlot()].Hydration -= 2;
+                    currwater += 1;
+                    stamina -= Math.round(4 * (1 - TractorPower));
+                }
+            }
+        }
+        if (FindPlot() >= 0 && TractorFrameOwned && TractorAutoPlant == 1) {
+            for (var i = 0; i < Plantables.length; i++) {
+                if (LastPlanted.toLowerCase() == Plantables[i].Name.toLowerCase()) {
+                    if (stamina >= Math.round(10 * (1 - TractorPower)) && Plots[FindPlot()].ID < 0) {
+                        if (money >= Plantables[i].Cost) {
+                            stamina -= Math.round(10 * (1 - TractorPower));
+                            money -= Plantables[i].Cost;
+                            Plots[FindPlot()].ID = i;
+                            Plots[FindPlot()].FinalCost = Plantables[i].FinalCost + Plots[FindPlot()].Fertility;
+                            Plots[FindPlot()].DaysToGrow = Plantables[i].DaysToGrow - Plots[FindPlot()].PermGrowthTime;
+                            Plots[FindPlot()].CurrWaterUse = Plantables[i].WaterUse;
+                            Plots[FindPlot()].CropHealth = Plantables[i].CropHealth + Plots[FindPlot()].PermCropResistanceBonus;
+                            Plots[FindPlot()].LandCost += Plantables[i].PlantLandCost;
+                            Plots[FindPlot()].Irrigation += Plantables[i].PlantLandIrrigation;
+                            Plots[FindPlot()].Fertility += Plantables[i].PlantLandFertility;
+                            Plots[FindPlot()].PermCropResistanceBonus += Plantables[i].PlantLandCropResistance;
+                            Plots[FindPlot()].PermGrowthTime += Plantables[i].LandGrowSpeed;
+                            Plots[FindPlot()].PermGrowthTime += Plantables[i].LandGrowSpeed;
+                            i = Plantables.length + 1;
+                            Plots[FindPlot()].DaysGrowing = 0;
+                            Plots[FindPlot()].CurrentCost = 0;
+                        }
+
+                    }
+                }
+            }
+        }
+
+
+
+
+
+
+
+
+
+
+
+    });
+
+    var fps = 60;
+    setInterval(Main, 1000 / fps); //Uses FPS as frames per second
+
+
+    var offsetX = 8;
+    var offsetY = 5;
+    function Main() {
+
+        if (SleepTimer > 0) {
+            SleepTimer -= 1;
+        }
+        if (!shop && !sleep) {
+            requestAnimationFrame(Render);
+
+        }
+        else if (sleep) {
+            requestAnimationFrame(RenderSleep);
+        }
+        else if (shop) {
+            requestAnimationFrame(RenderShop);
+        }
+
+
+    }
+
+    function FindPlot() {
+
+
+        for (var i = 0; i < Plots.length; i++) {
+            if (Plots[i].x == posX + 2 && Plots[i].y == posY) {
+                var X = i;
+                i = Plots.length;
+                return X;
+            }
+        }
+        return -1;
+
+
+
+    }
+    function RedetermineNumberOfUtils()
+    {
+	var out = 3;
+	for (var i = 0; i < Plots.length; i++) {
+            if (Plots[i].Building == "SoilLab") {
+		out = out + 1
+            }
+        }
+        return out;
+
+    }
+    function RenderShop() {
+
+        canvas.fillStyle = "#c68c67";
+        canvas.fillRect(1, 1, screen.width, screen.height);
+        canvas.fillStyle = "#347561";
+        canvas.font = "12pt Courier";
+        canvas.fillText("Which shop would you like to go to?", 10, 40);
+        canvas.font = "10pt Courier";
+        canvas.fillText(money + "$", 10, 60);
+        canvas.fillText("Dave's Hardware", 300, 80);
+        canvas.fillText("Accessories Store", 10, 80);
+        canvas.fillText("A] Leave Shop", 100, 250);
+        canvas.fillText("B] Buy reservoir (10$)", 250, 100);
+        canvas.fillText("C] Buy pump (15$)", 250, 120);
+        if (FindPlot() >= 0) {
+            var Sprinklers = 0;
+            var Drains = 0;
+            var Handpumps = 0;
+            for (var i = 0; i < Plots[FindPlot()].LandUpgrades.length; i++) {
+                if (Plots[FindPlot()].LandUpgrades[i].toLowerCase() == "sprinkler") {
+                    Sprinklers++;
+                }
+                if (Plots[FindPlot()].LandUpgrades[i].toLowerCase() == "drain") {
+                    Drains++;
+                }
+                if (Plots[FindPlot()].LandUpgrades[i].toLowerCase() == "hand pump") {
+                    Handpumps++;
+                }
+
+            }
+
+            canvas.fillText("Sprinklers on current plot: " + Sprinklers, 250, 140);
+            canvas.fillText("D] Buy sprinkler (10$)", 250, 150);
+            canvas.fillText("Drains on current plot: " + Drains, 250, 170);
+            canvas.fillText("E] Buy drain (15$)", 250, 180);
+            canvas.fillText("Hand pumps on current plot: " + Handpumps, 250, 190);
+            canvas.fillText("F] Buy hand pump (4$)", 250, 200);
+            if (!TractorFrameOwned) {
+                canvas.fillText("G] Buy Tractor Frame (100$)", 250, 220);
+            }
+            else {
+                if (TractorAutoPlant < 0) {
+                    canvas.fillText("G] Tractor Auto Plant Upgrade (50$)", 250, 220);
+                }
+                if (TractorAutoWater < 0) {
+                    canvas.fillText("H] Tractor Auto Water Upgrade (50$)", 250, 240);
+                }
+                if (TractorAutoHarvest < 0) {
+                    canvas.fillText("I] Tractor Auto Harvest Upgrade (50$)", 250, 260);
+                }
+                canvas.fillText("J] Tractor Speed Upgrade (50$)", 250, 280);
+                canvas.fillText("K] Tractor Power Upgrade (50$)", 250, 300);
+                canvas.fillText("L] Tractor Comfort Upgrade (20$)", 250, 320);
+            }
+        }
+        canvas.fillText("Johnson's Banking & Real Estate", 500, 80);
+        var cottages = 0;
+        for (var i = 0; i < Plots.length; i++) {
+            if (Plots[i].Building == "Cottage") {
+                if (Plots[i].Hydration < Plots[i].MaxHydration * 1.5 && stamina > cottages  && Plots[i].FireTimer <= 0) {
+                    cottages++;
+                }
+            }
+        }
+        if (LoanAmount <= 0) {
+            canvas.fillText("0] Take out 20$ loan", 500, 120);
+        }
+        else {
+            canvas.fillText("0] Repay loan by 1$", 500, 120);
+        }
+        if (CanTend == false) {
+            canvas.fillText("1] Crop Tending Tools (10$)", 10, 100);
+        }
+        if (Plots[FindPlot()].Building != "") {
+            canvas.fillText("Shift-X] Demolish building", 500, 350);
+        }
+        if (Plots[FindPlot()].Building == "") {
+            canvas.fillText("=] Buy cottage for plot (" + (cottages * 10) + "$)", 500, 100);
+            canvas.fillText(",] Buy warehouse for plot (150$)", 500, 140);
+        }
+        else if (Plots[FindPlot()].Building == "Warehouse") {
+            canvas.fillText("=] Upgrade warehouse to inn (100$)", 500, 100);
+            if (days > 50) {
+                canvas.fillText(",] Greenhouse (Not yet implemented!) (200$)", 500, 160);
+            }
+	    canvas.fillText("=] Upgrade warehouse to inn (100$)", 500, 100);
+	    canvas.fillText("Warehouse refurbishments: ", 500, 140);
+            if (days > 150) {
+                canvas.fillText(".] Soil research center (400$)", 500, 180);
+            }
+            if (days > 200) {
+                canvas.fillText("{] Seed lab (N.Y.I.!) (1200$)", 500, 200);
+            }
+            if (days > 250) {
+                canvas.fillText("/] Firefighting station (N.Y.I.!) (2000$)", 500, 220);
+            }
+            if (days > 300) {
+                canvas.fillText("}] GMO lab (N.Y.I.!) (4000$)", 500, 240);
+            }
+        }
+
+
+
+
+        if (WarningTimer > 0) {
+            canvas.font = "8pt Courier";
+            if (GoodWarning) {
+                canvas.fillStyle = "#b7ef73";
+            }
+            else {
+                canvas.fillStyle = "#ef7373";
+            }
+            canvas.fillText(Warning, 220, 350);
+            WarningTimer -= 1;
+        }
+        if (WarningTimer <= 0) {
+            WarningTimer = 0;
+            Warning = "";
+            GoodWarning = false;
+        }
+
+
+    }
+    function RenderSleep() {
+        canvas.clearRect(0, 0, screen.width, screen.height);
+        canvas.fillStyle = "#596777";
+        canvas.fillRect(1, 1, screen.width, screen.height);
+        canvas.font = "15pt Courier";
+        canvas.fillStyle = "#bbadaa";
+        canvas.fillText("You went to sleep for the night.", 10, 40);
+        canvas.font = "10pt Courier";
+        if (!SleepApplied && !sleepdone) {
+            days++;
+            season = Math.round((days % 180) / 45);
+            year = Math.floor(days / 180) + 1;
+            currwater += pumps;
+            currwater = Math.floor(currwater * 0.9);
+            sleepdone = true;
+        }
+        if (stamina < (maxstamina / 2) && Math.random() > 0.75 || GotStaminaUp) {
+            if (!GotStaminaUp && !sleepdone2) {
+                maxstamina += 5;
+                GotStaminaUp = true;
+
+            }
+            canvas.fillText("Your max stamina increased! " + (maxstamina / 5 - 1) + "->" + (maxstamina / 5), 10, 80);
+        }
+        if (!SleepApplied && !sleepdone2) {
+            sleepdone2 = true;
+            stamina = maxstamina;
+	    if (Plots[FindPlot()].Building == "Inn")
+	    {
+		stamina = Math.ceiling(maxstamina * 1.2) + 5
+	    }
+            for (var i = 0; i < Plots.length; i++) {
+                if (Plots[i].FireTimer > 0) {
+                    //find random plot to push fire into
+                    var plot = Math.round(Math.random() * (Plots.length - 1));
+                    var distance = Math.sqrt((Plots[i].x - Plots[plot].x) * (Plots[i].x - Plots[plot].x) + (Plots[i].y - Plots[plot].y) * (Plots[i].y - Plots[plot].y));
+                    var test = Math.random();
+                    if (plot != i) {
+                        if ((1 / (firespread + distance * distance * distance * firespread / 120)) > test && Plots[plot].FireTimer <= 0 && Plots[plot].ID >= 0) {
+                            Plots[plot].FireTimer = Math.ceil(Math.sqrt(Plots[i].FireTimer));
+                            //alert((1 / (firespread + distance * distance * distance * firespread)));
+                        }
+                        else {
+                            if (Math.random() < 1 / (1000 / 120)) {
+                                Plots[i].FireTimer = Math.ceil(Math.sqrt(Math.random() * 20));
+                            }
+
+                        }
+                    }
+                }
+                var MaxSoilUpgrades = "";
+                if (Plots[i].Hydration < Plots[i].MaxHydration * 2) {
+                    Plots[i].Hydration = Math.floor(Plots[i].Hydration * 0.9) - Plots[i].CurrWaterUse;
+                }
+                Plots[i].Hydration += Plots[i].Irrigation;
+                if (Plots[i].Hydration > Plots[i].MaxHydration / 2) {
+                    Plots[i].Hydration -= 1;
+                }
+                if (!SleepApplied) {
+                    for (var U = 0; U < Plots[i].LandUpgrades.length; U++) {
+                        if (Plots[i].LandUpgrades[U].toLowerCase() == "sprinkler" && currwater > 0) {
+                            Plots[i].Hydration += 1;
+                            currwater -= 1;
+                        }
+                        if (Plots[i].LandUpgrades[U].toLowerCase() == "drain") {
+                            if (Plots[i].Hydration > 2) {
+                                Plots[i].Hydration -= 2;
+                                currwater += 1 + Math.round(Math.random());
+                                if (currwater > reservoirs * 5) {
+                                    currwater = reservoirs * 5;
+                                }
+                            }
+                        }
+                    }
+                }
+                if (Plots[i].ID >= 0) {
+                    Plots[i].DaysGrowing += 1;
+                    if (Plots[i].DaysGrowing >= Plots[i].DaysToGrow / 3 * 2 && Plots[i].CurrentCost < Plots[i].FinalCost * 2 / 3) {
+                        Plots[i].CurrentCost += 1;
+                    }
+                    if (Plots[i].DaysGrowing >= Plots[i].DaysToGrow) {
+                        Plots[i].CurrentCost = Plots[i].FinalCost;
+                    }
+                    if (Plots[i].DaysGrowing >= Plots[i].DaysToGrow + 2) {
+                        Plots[i].CropHealth -= 1;
+                    }
+                    if (Plots[i].Hydration < Plots[i].MaxHydration / 4) {
+                        Plots[i].CropHealth -= 1;
+                    }
+                    if (Plots[i].Hydration <= 0) {
+                        Plots[i].CropHealth -= Plots[i].CurrWaterUse;
+                    }
+                    if (Plots[i].Hydration > Plots[i].MaxHydration * 3 / 4) {
+                        Plots[i].CropHealth -= 1;
+                    }
+                    if (Plots[i].Hydration > Plots[i].MaxHydration) {
+                        Plots[i].CropHealth -= 1;
+                    }
+                    if (Plots[i].Hydration <= 0) {
+                        Plots[i].CropHealth -= 1;
+                    }
+                    if (Plots[i].Hydration < 0) {
+                        Plots[i].Hydration = 0;
+                        Plots[i].CropHealth -= 1;
+
+
+                    }
+                    if (Plots[i].CropHealth <= 0) {
+                        Plots[i].ID = -1;
+                    }
+
+                }
+                if (Plots[i].CropHealth <= 0) {
+                    Plots[i].ID = -1;
+                }
+                if (Plots[i].ID == -1 && !SleepApplied) {
+                    Plots[i].ID = -1;
+                    Plots[i].CurrWaterUse = 0;
+                    Plots[i].CurrentCost = 0;
+                    Plots[i].DaysGrowing = 0;
+                    Plots[i].FinalCost = 0;
+                    Plots[i].DaysToGrow = 0;
+                    Plots[i].CropHealth = 0;
+
+                }
+
+            }
+        }
+        SleepApplied = true;
+        stamina = maxstamina;
+        canvas.fillText("Press Z to continue.", 10, 200);
+
+    }
+    function Render() {
+        SleepApplied = false;
+        canvas.fillStyle = "#8c644f";
+        canvas.fillRect(0, 0, screen.width, screen.height);
+        canvas.beginPath();
+        canvas.lineWidth = "2";
+        canvas.strokeStyle = "#f9ec93";
+
+        var X = posX - offsetX;
+        var Y = posY - offsetY;
+        canvas.rect(402, 202, 40, 40);
+        canvas.stroke();
+        // 19 by 9 screen.
+
+        for (var i = 0; i < Plots.length; i += 1) {
+            if (Plots[i].FireTimer > 0) {
+                //find random plot to push fire into
+                var plot = Math.round(Math.random() * (Plots.length - 1));
+                var distance = Math.sqrt((Plots[i].x - Plots[plot].x) * (Plots[i].x - Plots[plot].x) + (Plots[i].y - Plots[plot].y) * (Plots[i].y - Plots[plot].y));
+                var test = Math.random();
+                if (plot != i) {
+                    if ((1 / (firespread + distance * distance * distance * firespread)) > test && Plots[plot].FireTimer <= 0 && Plots[plot].ID >= 0) {
+                        Plots[plot].FireTimer = Math.ceil(Math.sqrt(Plots[i].FireTimer));
+                        alert((1 / (firespread + distance * distance * distance * firespread)));
+                    }
+                    else {
+                        if (Math.random() < 1 / (1000 * 60)) {
+                            Plots[i].FireTimer = Math.ceil(Math.sqrt(Math.random() * 20));
+                        }
+
+                    }
+                }
+            }
+            if (Plots[i].ID >= 0) {
+                canvas.fillStyle = Plantables[Plots[i].ID].Color;
+                canvas.fillRect((Plots[i].x - X) * 40 + 4, (Plots[i].y - Y) * 40 + 4, 36, 36);
+            }
+            else {
+                canvas.fillStyle = "#8eb25b";
+                canvas.fillRect((Plots[i].x - X) * 40 + 4, (Plots[i].y - Y) * 40 + 4, 36, 36);
+            }
+            if (Plots[i].Hydration > Plots[i].MaxHydration * 3 / 4) {
+                canvas.fillStyle = "#389ee2";
+                canvas.fillRect(((Plots[i].x - X) * 40) + 8, ((Plots[i].y - Y) * 40) + 12, 8, 4);
+                canvas.fillRect(((Plots[i].x - X) * 40) + 16, ((Plots[i].y - Y) * 40) + 8, 4, 4);
+                canvas.fillRect(((Plots[i].x - X) * 40) + 24, ((Plots[i].y - Y) * 40) + 32, 12, 8);
+                canvas.fillRect(((Plots[i].x - X) * 40) + 20, ((Plots[i].y - Y) * 40) + 28, 4, 4);
+                canvas.fillRect(((Plots[i].x - X) * 40) + 8, ((Plots[i].y - Y) * 40) + 32, 4, 4);
+                canvas.fillRect(((Plots[i].x - X) * 40) + 8, ((Plots[i].y - Y) * 40) + 32, 4, 4);
+            }
+            if (Plots[i].Hydration < Plots[i].MaxHydration / 4) {
+                canvas.fillStyle = "#e0c482";
+                canvas.fillRect((Plots[i].x - X) * 40 + 28, (Plots[i].y - Y) * 40 + 24, 8, 4);
+                canvas.fillRect((Plots[i].x - X) * 40 + 16, (Plots[i].y - Y) * 40 + 28, 4, 4);
+                canvas.fillRect((Plots[i].x - X) * 40 + 12, (Plots[i].y - Y) * 40 + 16, 12, 8);
+                canvas.fillRect((Plots[i].x - X) * 40 + 16, (Plots[i].y - Y) * 40 + 28, 4, 4);
+                canvas.fillRect((Plots[i].x - X) * 40 + 28, (Plots[i].y - Y) * 40 + 4, 4, 4);
+                canvas.fillRect((Plots[i].x - X) * 40 + 28, (Plots[i].y - Y) * 40 + 4, 4, 4);
+
+            }
+            if (Plots[i].Hydration <= 0) {
+                canvas.fillStyle = "#e0c482";
+                canvas.fillRect((Plots[i].x - X) * 40 + 4, (Plots[i].y - Y) * 40 + 4, 36, 36);
+
+            }
+
+	     if (Plots[i].Building == "Inn") {
+                canvas.fillStyle = "#dbcfb1";
+                canvas.fillRect((Plots[i].x - X) * 40 + 12, (Plots[i].y - Y) * 40 + 16, 24, 12);
+                canvas.fillStyle = "#7f6011";
+                canvas.fillRect((Plots[i].x - X) * 40 + 28, (Plots[i].y - Y) * 40 + 24, 4, 4);
+
+            }
+            if (Plots[i].Building == "Cottage") {
+                canvas.fillStyle = "#dbcfb1";
+                canvas.fillRect((Plots[i].x - X) * 40 + 20, (Plots[i].y - Y) * 40 + 28, 12, 4);
+                canvas.fillStyle = "#7f6011";
+                canvas.fillRect((Plots[i].x - X) * 40 + 24, (Plots[i].y - Y) * 40 + 24, 4, 8);
+
+            }
+            if (Plots[i].Building == "Warehouse") {
+                canvas.fillStyle = "#c3d0e5"; //walls
+                canvas.fillRect((Plots[i].x - X) * 40 + 8, (Plots[i].y - Y) * 40 + 28, 28, 4);
+                canvas.fillStyle = "#33312f"; //door
+                canvas.fillRect((Plots[i].x - X) * 40 + 16, (Plots[i].y - Y) * 40 + 28, 8, 4);
+
+            }
+	    if (Plots[i].Building == "SoilLab") {
+                canvas.fillStyle = "#e5d4d3"; //walls
+                canvas.fillRect((Plots[i].x - X) * 40 + 8, (Plots[i].y - Y) * 40 + 28, 28, 4);
+                canvas.fillStyle = "#33312f"; //door
+                canvas.fillRect((Plots[i].x - X) * 40 + 16, (Plots[i].y - Y) * 40 + 28, 8, 4);
+
+            }
+
+            if (Plots[i].Hydration > Plots[i].MaxHydration) {
+                canvas.fillStyle = "#389ee2";
+                canvas.fillRect((Plots[i].x - X) * 40 + 4, (Plots[i].y - Y) * 40 + 4, 36, 36);
+
+
+            }
+            if (Plots[i].Building == "Cottage") {
+                canvas.fillStyle = "#dbcfb1";
+                canvas.fillRect((Plots[i].x - X) * 40 + 20, (Plots[i].y - Y) * 40 + 24, 12, 4);
+                canvas.fillStyle = "#4f4d48";
+                canvas.fillRect((Plots[i].x - X) * 40 + 16, (Plots[i].y - Y) * 40 + 20, 20, 4);
+                canvas.fillRect((Plots[i].x - X) * 40 + 20, (Plots[i].y - Y) * 40 + 16, 12, 4);
+
+            }
+	    if (Plots[i].Building == "Inn") {
+                canvas.fillStyle = "#dbcfb1";
+                canvas.fillRect((Plots[i].x - X) * 40 + 12, (Plots[i].y - Y) * 40 + 16, 24, 4);
+                canvas.fillStyle = "#4f4d48";
+                canvas.fillRect((Plots[i].x - X) * 40 + 12, (Plots[i].y - Y) * 40 + 12, 24, 4);
+                canvas.fillRect((Plots[i].x - X) * 40 + 16, (Plots[i].y - Y) * 40 + 8, 16, 4);
+
+            }
+	    if (Plots[i].Building == "Warehouse") {
+                canvas.fillStyle = "#c3d0e5"; //walls
+                canvas.fillRect((Plots[i].x - X) * 40 + 8, (Plots[i].y - Y) * 40 + 20, 28, 8);
+                canvas.fillStyle = "#33312f"; //door
+                canvas.fillRect((Plots[i].x - X) * 40 + 16, (Plots[i].y - Y) * 40 + 24, 8, 4);
+                canvas.fillStyle = "#1f1f1f"; //roof
+                canvas.fillRect((Plots[i].x - X) * 40 + 8, (Plots[i].y - Y) * 40 + 16, 28, 4);
+
+            }
+	    if (Plots[i].Building == "SoilLab") {
+                canvas.fillStyle = "#e5d4d3"; //walls
+                canvas.fillRect((Plots[i].x - X) * 40 + 8, (Plots[i].y - Y) * 40 + 20, 28, 8);
+                canvas.fillStyle = "#33312f"; //door
+                canvas.fillRect((Plots[i].x - X) * 40 + 16, (Plots[i].y - Y) * 40 + 24, 8, 4);
+                canvas.fillStyle = "#1f1f1f"; //roof
+                canvas.fillRect((Plots[i].x - X) * 40 + 8, (Plots[i].y - Y) * 40 + 16, 28, 4);
+		canvas.fillRect((Plots[i].x - X) * 40 + 8, (Plots[i].y - Y) * 40 + 12, 20, 4);
+
+            }
+
+            if (Plots[i].PermCropResistanceBonus <= -5) {
+                canvas.fillStyle = "rgba(114, 22, 160,0.3)";
+                canvas.fillRect((Plots[i].x - X) * 40 + 2, (Plots[i].y - Y) * 40 + 2, 40, 40);
+
+            }
+            if (Plots[i].FireTimer >= 0 && Plots[i].ID >= 0) {
+                for (var F = 0; F < Math.random() * (Plots[i].FireTimer - (20 * (Plots[i].Hydration + 1)) / 120); F++) {
+                    canvas.fillStyle = "rgba(" + (127 + Math.round(Math.random() * 126)) + ", " + (Math.round(Math.random() * 126)) + ", 0,0.7)";
+                    canvas.fillRect((Plots[i].x - X) * 40 + 2 + Math.round(Math.random() * 36), (Plots[i].y - Y) * 40 + 2 + Math.round(Math.random() * 36), 4, 4);
+                }
+                if (Plots[i].Hydration > Plots[i].MaxHydration) {
+                    Plots[i].FireTimer = -1;
+                }
+                else if (Plots[i].Hydration > Plots[i].MaxHydration * 1 / 2) {
+                    Plots[i].FireTimer++;
+                    if ((Math.random() ^ 2) > (Plots[i].Hydration / Plots[i].MaxHydration) && Plots[i].FireTimer >= 0) {
+                        Plots[i].FireTimer -= 2;
+                    }
+                    if (Plots[i].FireTimer % (80 + Plots.length * 4 + 80 * (Plots[i].Hydration + 1)) == 0) {
+                        Plots[i].CropHealth -= 1;
+                    }
+                    if (Math.random() > 0.996) {
+                        Plots[i].Hydration -= 1;
+                    }
+                }
+                else {
+                    Plots[i].FireTimer++;
+                    if (Plots[i].FireTimer % (40 + Plots.length * 2 + 40 * (Plots[i].Hydration + 1)) == 0) {
+                        Plots[i].CropHealth -= 1;
+                    }
+                    if (Math.random() > 0.997) {
+                        Plots[i].Hydration -= 1;
+                    }
+                }
+                if (Plots[i].FireTimer <= 3 && Math.random() < 0.01) {
+                    FireTimer = -1;
+                }
+                if (Plots[i].Hydration < 0) {
+                    Plots[i].Hydration = 0;
+                }
+                if (Plots[i].CropHealth <= 0) {
+                    if (Plots[i].Building == "Cottage" && Plots[i].FireTimer > 600 && Math.random() > 0.8) {
+                        Plots[i].Building = "";
+                    }
+                    else if (Plots[i].Building.length > 0 && Plots[i].FireTimer > 900 && Math.random() > 0.8) {
+                        Plots[i].Building = "";
+                    }
+                    for (var D = 0; D < Plots[i].LandUpgrades.lengh; D++) {
+                        if (Math.random() > 0.75) {
+                            Plots[i].LandUpgrades.splice(D, 1);
+                        }
+                    }
+                    Plots[i].FireTimer = -1;
+                    Plots[i].Hydration = 0;
+                    Plots[i].ID = -2;
+                    Plots[i].CurrWaterUse = 0;
+                    Plots[i].CurrentCost = 0;
+                    Plots[i].DaysGrowing = 0;
+                    Plots[i].FinalCost = 0;
+                    Plots[i].DaysToGrow = 0;
+                    Plots[i].CropHealth = 0;
+
+                }
+
+
+            }
+        }
+        canvas.clearRect(0, 0, 160, screen.height);
+        if (FindPlot() >= 0) {
+            if (!Plots[FindPlot()].owned) {
+                canvas.fillStyle = "#a3805b";
+            }
+            else if (Plots[FindPlot()].ID == -2) {
+                canvas.fillStyle = "#222222";
+            }
+            else if (Plots[FindPlot()].PermCropResistanceBonus <= -3) {
+                canvas.fillStyle = "rgb(114, 22, 160)";
+            }
+            else if (Plots[FindPlot()].Hydration < Plots[FindPlot()].MaxHydration / 4) {
+                canvas.fillStyle = "#e0c482";
+            }
+            else if (Plots[FindPlot()].Hydration > Plots[FindPlot()].MaxHydration * 3 / 4) {
+                canvas.fillStyle = "#389ee2";
+            }
+            else if (Plots[FindPlot()].PermCropResistanceBonus >= 5) {
+                canvas.fillStyle = "#79d19d";
+
+            }
+            else {
+                canvas.fillStyle = "#8eb25b";
+            }
+        }
+        else {
+            canvas.fillStyle = "#a3805b";
+        }
+        canvas.fillRect(-1, -1, 161, screen.height + 1);
+        canvas.beginPath();
+        canvas.fillStyle = "#000000";
+        canvas.rect(0, 0, 160, screen.height);
+        canvas.stroke();
+        canvas.fillStyle = "#e5dd72";
+        OptionsAvailable = [];
+        canvas.font = "10pt Courier";
+        if (FindPlot() >= 0) {
+            if (Plots[FindPlot()].FireTimer >= 0 && Plots[FindPlot()].ID >= 0) {
+                OptionsAvailable.push("*FIRE!*");
+
+            }
+        }
+        OptionsAvailable.push(money + "$");
+        OptionsAvailable.push("Day " + days);
+        OptionsAvailable.push(currwater + " units of water");
+        var TotalCropValue = 0;
+        for (var i = 0; i < Plots.length; i += 1) {
+            if (Plots[i].ID >= 0) {
+                TotalCropValue += Plots[i].CurrentCost;
+            }
+        }
+        OptionsAvailable.push("TCV: " + TotalCropValue + "$");
+        OptionsAvailable.push("(Total Crop Value)");
+        if (stamina < maxstamina / 2) {
+            if (stamina <= 0) {
+                OptionsAvailable.push("You're exhausted.");
+            }
+            else {
+                OptionsAvailable.push("You feel tired.");
+            }
+        }
+        OptionsAvailable.push("__________________");
+        OptionsAvailable.push("Z] Enter shop");
+        if (FindPlot() < 0) {
+            OptionsAvailable.push("B] Buy this plot");
+        }
+        canvas.fillStyle = "#e5dd72";
+        if (FindPlot() >= 0) {
+            if (Plots[FindPlot()].Building == "Cottage" || Plots[FindPlot()].Building == "Inn") {
+                OptionsAvailable.push("X] Go to sleep");
+            }
+            OptionsAvailable.push("G] Gather Water");
+        }
+        if (FindPlot() >= 0) {
+            if (CanTend) {
+                OptionsAvailable.push("T] Tend to Crops");
+            }
+            if (Plots[FindPlot()].owned && Plots[FindPlot()].ID >= 0) {
+                OptionsAvailable.push("K] Water Crop");
+                if (Plots[FindPlot()].Hydration >= Plots[FindPlot()].MaxHydration) {
+                    OptionsAvailable.push("L] Scoop Water");
+                }
+                if (Plots[FindPlot()].DaysGrowing > Math.ceil(Plots[FindPlot()].DaysToGrow / 3 * 2)) {
+                    OptionsAvailable.push("H] Harvest crop");
+                }
+                else {
+                    OptionsAvailable.push("H] Pick crop");
+                }
+                OptionsAvailable.push("__________________");
+                OptionsAvailable.push("Day " + Plots[FindPlot()].DaysGrowing + " out of " + Plots[FindPlot()].DaysToGrow);
+                OptionsAvailable.push("Crop Health: " + Plots[FindPlot()].CropHealth);
+                var value = Plots[FindPlot()].CurrentCost;
+                if (Plots[FindPlot()].DaysGrowing >= Plots[FindPlot()].DaysToGrow && CanTend && Plots[FindPlot()].Tendedness > 0) {
+                    value += Math.round(Math.sqrt((Plots[FindPlot()].Tendedness / Plots[FindPlot()].FinalCost)));
+                }
+                if (Plots[FindPlot()].DaysGrowing >= Plots[FindPlot()].DaysToGrow) {
+                    value += Plots[FindPlot()].Fertility;
+                    value += Plots[FindPlot()].TempCost;
+                }
+                OptionsAvailable.push("Currently worth " + value + "$");
+                OptionsAvailable.push("Hydration: " + Plots[FindPlot()].Hydration);
+                OptionsAvailable.push("Water Retention: " + Plots[FindPlot()].MaxHydration);
+            }
+            else if (Plots[FindPlot()].ID < 0) {
+                OptionsAvailable.push("K] Water Land");
+                if (Plots[FindPlot()].Hydration >= Plots[FindPlot()].MaxHydration) {
+                    OptionsAvailable.push("L] Scoop Water");
+                }
+                OptionsAvailable.push("P] Plant Crop");
+		MaxSoilUtils = RedetermineNumberOfUtils();
+                if (Plots[FindPlot()].UpgradeCount < MaxSoilUtils) {
+		    
+                    OptionsAvailable.push("U] Use Utility (" + (MaxSoilUtils - Plots[FindPlot()].UpgradeCount) + ")");
+                }
+                else {
+                    OptionsAvailable.push("-Max utils-");
+                }
+
+
+            }
+            else {
+
+
+            }
+        }
+
+
+        for (var i = 0; i < OptionsAvailable.length; i++) {
+            canvas.fillStyle = "#f9ec93";
+            canvas.fillText(OptionsAvailable[i], 10, i * 18 + 18);
+        }
+        if (WarningTimer > 0) {
+            canvas.font = "8pt Courier";
+            if (GoodWarning) {
+                canvas.fillStyle = "#b7ef73";
+            }
+            else {
+                canvas.fillStyle = "#ef7373";
+            }
+            canvas.fillText(Warning, 220, 350);
+            WarningTimer -= 1;
+        }
+        if (WarningTimer <= 0) {
+            WarningTimer = 0;
+            Warning = "";
+            GoodWarning = false;
+        }
+
+
+    }
+
+
+
+
+</script>
+
+<script src="Gamedata/Plantables.js"></script>
+<script src="Gamedata/Utilities.js"></script>

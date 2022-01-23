@@ -1,0 +1,199 @@
+<canvas id="screen" width="480" height="400"/>
+
+
+<script>
+var screen = document.getElementById('screen');
+var canvas = screen.getContext('2d');
+setInterval(Main, 1); 
+
+function Main() {
+	requestAnimationFrame(draw)
+}
+//MK3.5
+var drawCircleLines = false //BEAUTIFUL! but can take your eyes away from the actual lines.
+var drawCirclePoints = false // less pretty but it can help clarify what's happening
+var rot = 0
+var frequencies = [1]
+var amplitudes = [5]
+var originX = 0;
+var originY = 0;
+var originVX = 0;
+var originVY = 0;
+//MK2
+var startingRots = [0,0,0,0,0]
+var points = 100000
+var distBetweenPts = 0.01
+var scale = 4
+
+function ts16(k)
+{
+	return k.toString(16);
+}
+function colhex(r,g,b)
+{
+	return "#" + ts16(r)+ ts16(g)+ ts16(b);
+
+}
+var j = 0
+var instantDraw = false
+var infiniteDraw = false
+var ScreensaverMode = true
+var px = 200
+var py = 200
+var LockThis = false
+function RandomFourier(F)
+{
+	rot = Math.random() * Math.PI * 2;
+	frequencies = []
+	amplitudes = []
+	totalPoints = 1000
+	i = 0
+	//unbounded = false
+	//if (Math.random() > 0.5)
+	//{
+		//unbounded = true
+	//}
+	distBetweenPts = Math.random() / 10 + 0.01
+	var LastFreq = 0
+	while (Math.random() < 0.7 || frequencies.length <= 2)
+	{
+		Freq = Math.random()*Math.random()*10;
+		//MK3
+		if (Math.random() < 0.5)
+		{
+			Freq = Freq * -1;
+		}
+		frequencies.push(Math.ceil(LastFreq + Freq));
+		LastFreq = LastFreq + 1 + Math.abs(Freq);
+		amplitudes.push(Math.random()*4.75+0.25 + Math.random())
+		//if (!unbounded)
+		//{
+			startingRots.push(Math.random()*Math.PI*2)
+		//}
+
+		//idea: totalPoints should be somewhat close to (total amplitude) * (largest amplitude) / (slowest frequency).  this should make it fill itself out until it stops.
+		//this should make it draw itself perfectly
+	
+		totalPoints = totalPoints + 500 + 100*i
+		i = i + 1
+        }
+	totalAmp = 0;
+	largestAmp = 0;
+	slowestFreq = 0;
+	for (var i = 0; i < amplitudes.length; i++)
+	{
+		totalAmp = totalAmp + amplitudes[i];
+		if (largestAmp < amplitudes[i])
+		{
+			largestAmp = amplitudes[i];
+		}
+		if (frequencies[i] < slowestFreq || slowestFreq == 0)
+		{
+			slowestFreq = frequencies[i];
+		}
+	}
+	distBetweenPts = distBetweenPts / totalAmp;
+	//totalPoints = totalAmp * largestAmp / slowestFreq / distBetweenPoints;
+	points = 2 * totalPoints
+	scale = 7
+	j = 0
+	instantDraw = false
+}
+function SetTo(F,A,P,S,I,D)
+{
+	frequencies = F
+	amplitudes = A
+	points = P
+	scale = S
+	j = 0
+	instantDraw = I
+	distBetweenPoints = D
+}
+function draw() {
+  while (startingRots.length < frequencies.length)
+  {
+	startingRots.push(0)  
+  }
+  if (instantDraw) {
+    canvas.fillStyle = "#ffffff"
+    canvas.fillRect(0,0,screen.width,screen.height);
+
+    for (var i = 0; i < points; i++)
+    {
+    	var x = 0;
+	var y = 0;
+    	for (var A = 0; A < frequencies.length; A++)
+    	{
+      	x = x + amplitudes[A] *  Math.cos(frequencies[A] * distBetweenPts * i + startingRots[A] + rot)
+	y = y + amplitudes[B] * Math.sin(frequencies[B] * distBetweenPts * i + startingRots[B] + rot)
+    	}
+    	canvas.fillStyle = "#000000"
+	canvas.shadowBlur = 2
+    	canvas.fillRect(200+x*scale,200+y*scale,1,1);
+	px = x
+	py = y
+    }
+    j = 0
+  }
+  else if (j <= points || infiniteDraw) {
+     if (j == 0)
+     {
+	canvas.fillStyle = "#ffffff"
+        canvas.fillRect(0,0,screen.width,screen.height);
+	if (ScreensaverMode)
+	{
+		RandomFourier()
+	}
+     }
+    	var x = 0;
+	var y = 0;
+    	for (var A = 0; A < frequencies.length; A++)
+    	{
+		if (drawCircleLines)
+		{
+			canvas.beginPath();
+			canvas.moveTo(200 + x * scale, 200 + y * scale);
+			canvas.strokeStyle = "#00000005"
+		}
+      		x = x + amplitudes[A] *  Math.cos(frequencies[A] * distBetweenPts * j + startingRots[A] + rot)
+		y = y + amplitudes[A] *  Math.sin(frequencies[A] * distBetweenPts * j + startingRots[A] + rot)
+		if (drawCirclePoints)
+		{
+			canvas.fillStyle = "#00008811"
+			canvas.fillRect(200+x*scale+originX,200+y*scale+originY,1,1);
+			canvas.fillStyle = "#000000ff"
+		}
+		if (drawCircleLines)
+		{
+			canvas.lineTo(200 + x * scale, 200 + y * scale);
+			canvas.stroke();
+		}
+    	}
+	x = 0;
+	y = 0;
+	for (var A = 0; A < frequencies.length; A++)
+    	{
+      		x = x + amplitudes[A] *  Math.cos(frequencies[A] * distBetweenPts * j + startingRots[A] + rot)
+		y = y + amplitudes[A] *  Math.sin(frequencies[A] * distBetweenPts * j + startingRots[A] + rot)
+    	}
+	originX = originX + originVX;
+	originY = originY + originVY;
+    	canvas.fillStyle = "#000000"
+	canvas.shadowBlur = 2
+    	canvas.fillRect(200+x*scale + originX,200+y*scale + originY,1,1);
+    	j = j + 1
+	if (LockThis)
+	{
+		j = 1;
+	}
+	if (j == points && ScreensaverMode)
+	{
+		j = 0
+	}
+  }
+}
+
+
+
+
+</script>

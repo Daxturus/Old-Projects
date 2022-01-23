@@ -1,0 +1,1574 @@
+<canvas id="screen" width="1600" height="900" />
+
+
+
+
+<script>
+    var screen = document.getElementById('screen');
+    var canvas = screen.getContext('2d');
+    var World = [];
+    var Enemies = [];
+    var Projectiles = [];
+    var Players = []; //keeping this like this in case i want to add multiplayer later
+    var Rails = []; //format: rot, length, posx, posy
+    var money = 200;
+    var inMenu = true;
+    var menuState = 0;
+    var cursorX;
+var cursorY;
+document.onmousemove = function(e){
+    cursorX = e.pageX;
+    cursorY = e.pageY;
+}
+
+
+    
+    //CONTROL SCHEME:
+    //Hold "W" to move upwards.
+    //Hold "S" to move downwards.
+    //Hold "SHIFT" to slide downwards, which is faster but accelerates you slower. Also sliding speed depends on the slope of the rail you're on.
+    //Press "UP" to move your selection up 1 block.
+    //Press "DOWN" to move your selection down 1 block.
+    //Press "LEFT" to move your selection left 1 block.
+    //Press "RIGHT" to move your selection right 1 block.
+    //If your selection box moves offscreen, it snaps back on screen to the block closest to where it was before.
+    //Press B to select a building block.
+    //Press CONTROL to build your selected block at a region.
+    //Pressing ALT builds standard truss.
+    //Press I to open your character screen.
+
+    //MAKE SURE THAT Enemies can friendly fire
+    
+
+
+
+    //BLOCKS
+    //0: girder -- standard-issue block.
+    //1: phase block -- high hp but can be shot through
+    //2: truss -- can be shot through but not moved through
+    //3: charger -- you move normal speed when in range of this. kinda pricy.
+    //4: machine gun -- automatically shoots enemies. YOU + your turrets can shoot through it.
+    //5: turret -- shoots ultra-high damage rounds (10 dmg) at enemies. You CAN'T shoot through it.
+    //6: electronic arrowslit -- YOU can shoot through it, but not enemies. like 30$ 
+    //7: medical beacon -- heals you in range. somewhat expensive.
+    //8: flamer -- high dps short range turret, constantly shoots in 4 directions
+    //9: arsenal -- allows you to access character upgrades in range. extremely pricey, but you get one at the start. also allows you to change your block loadout.
+
+    //LOCKED without Block Tech I
+    //10: repair beacon -- repairs all blocks in range. VERY pricey.
+    //11: plasma thrower -- deals about as much dps as a flamer but it's a turret.
+    //12: balloon explosive -- deals about 100 damage to an enemy that moves near it. crazy.
+    //13: subatomic freezer -- slows enemies onscreen
+    //14: poison field generator -- deals damage slowly to enemies when loaded. only a little bit expensive but deals like 1 dps
+    //15: hercules beacon -- reduces weapon cooldown time slightly for you
+    //16: scrapping grinder -- if an enemy walks on this, it takes like 30 damage and gives you $$$. can be shot over.
+    //17: webbing turret -- shoots shots that stop enemies in their tracks. can be shot over.
+    //18: mycological horror -- adds life steal to your attacks while loaded. can be shot over.
+    //19: presserator -- earn money (1$/sec) when loaded. fragile. plus it's like 90$
+
+    //LOCKED without Block Tech II
+    //20: lance gun -- shoots OVER blocks! lowish dps but looks really cool.
+    //21: magnet -- attracts enemy bullets to itself. has an extremely high HP of 50.
+    //22: neutron beam -- targets enemies closest to YOU rather than closest to ITSELF, great for intra-base defense.
+    //23: tech block -- medium HP self regenerating block from heck. at least 50$.
+    //24: crumblite -- high hp cheap block, but actually decays HP on its own quickly until it is eventually destroyed.
+    //25: stator -- deals damage to enemies onscreen based on how fast they're moving
+    //26: death ray -- every 20 seconds, this flat out kills an enemy. deals 500 damage.
+    //27: liberator -- minigun. 30 dps. crazy. arm-and-leg expensive, but high HP.
+    //28: riot block -- completely immune to melee attacks (and explosions?)
+    //29: LINAC phaser -- piercing like a sniper rifle and is completely ridiculous.
+
+
+
+    //ARMORY UPGRADES:
+    //Block Tech I (500$): Access blocks 10-19.
+    //Block Tech II (2000$): Access blocks 20-29.
+
+    //Shields I (1500$): Increases your max health by 10, to 30.
+    //Shields II (3000$): Increases your max health by 20, to 50.
+
+    //Mechanic I (1000$): Repairing a block adds 2 hp instead of 1. Repair cooldown decreased to 0.66x. (Nets a 3x faster repair rate.)
+    //Mechanic II (2000$): Repairing a block adds 3 hp instead of 2. Repair cooldown decreased to 0.5x. (Nets a 6x faster repair rate.)
+    //Mechanic III (3000$): Repairing a block adds 4 hp instead of 3. Repair cooldown decreased to 0.4x. (Nets a 10x faster repair rate.)
+    //Mechanic IV (4000$): Repairing a block adds 5 hp instead of 4. Repair cooldown decreased to 0.33x. (Nets a 15x faster repair rate.)
+
+    //Rifle Tech I (1500$): The shot damage of the player is increased to 2x.
+    //Rifle Tech II (4500$): The shot damage of the player is increased to 3x.
+    //Rifle Tech III (9000$): The shot damage of the player is increased to 5x.
+
+    //Armor (2000$): 50% reduction in melee damage taken.
+    //Spike Armor (3000$): Melee damage taken is reflected to attacker.
+    //Flame Armor (5000$): Melee damage taken is reflected to attacker, including blocked damage.
+
+    //Mirroring I (4000$): 10% chance to completely reflect a bullet.
+    //Mirroring II (5000$): 15% chance to completely reflect a bullet. Take half damage from reflected bullets.
+    //Mirroring III (6000$): 20% chance to completely reflect a bullet. Take 1/3 damage from reflected bullets.
+
+    //Portable Medipak (500$): +0.5 hp/sec natural regen
+    //Portable Charger (3000$): +0.5 charged-ness to player at all times (half a Charger)
+
+    //Inductors (2000$): While selecting a block, that block gets a buffed fire rate.
+
+    function rotrect(x,y,r,a)
+    {
+	canvas.save();
+        canvas.beginPath();
+        canvas.translate( x+r/2, y+r/2 );
+        canvas.rotate(a);
+        canvas.rect( -r/2, -r/2, r,r);
+        canvas.fill();
+        canvas.restore();
+    }
+    function moveOut(r,a)
+    {
+	a2 = a - (Math.PI/2)*Math.round(a/(Math.PI/2))
+	x = r * Math.cos(a) / Math.cos(a2)
+	y = r * Math.sin(a) / Math.cos(a2)
+	return [x,y]
+    }
+    function findBlock(tposX, tposY)
+    {
+	for (var i = 0; i < World.length; i++)
+	{
+		if (tposX == World[i][0])
+		{
+			if (tposY == World[i][1])
+			{
+				var output = i;
+				i = World.length + 420; //lol
+				return output;
+			}
+		}
+
+	}
+	return -1;
+    }
+    function spawnEnemy(tier)
+    {
+	if (Enemies.length < 200)
+	{
+		if (Math.random() > 0.3)
+		{
+			if (Math.random() > 0.5)
+			{
+				Enemies.push({
+					type: 0,
+					hp: 6,
+					mhp: 6,
+					x: (Math.random() * 200 + getPosFromRail(0)[0] - 800),
+					y: (Math.random() * 900 - getPosFromRail(0)[1] - 450),
+					vx: 0,
+					vy: 0,	
+					hbX: 40,
+					hbY: 40,
+					col: "#551177",
+					mDmg: 1,
+					rDmg: 1,
+					money: 4,
+					cdownshoot: 0,
+					cdown: 0
+				});
+			}
+			else
+			{
+				Enemies.push({
+					type: 0,
+					hp: 6,
+					mhp: 6,
+					x: (Math.random() * -200 + getPosFromRail(0)[0] + 800),
+					y: (Math.random() * 900 - getPosFromRail(0)[1] - 450),
+					vx: 0,
+					vy: 0,
+					hbX: 40,
+					hbY: 40,
+					col: "#551177",
+					mDmg: 1,
+					rDmg: 1,
+					money: 4,
+					cdownshoot: 0,
+					cdown: 0
+				});
+				
+			}
+		}
+		else
+		{
+			if (Math.random() > 0.5)
+			{
+				Enemies.push({
+					type: 1,
+					hp: 8,
+					mhp: 8,
+					x: (Math.random() * 200 + getPosFromRail(0)[0] - 800),
+					y: (Math.random() * 900 - getPosFromRail(0)[1] - 450),
+					vx: 0,
+					vy: 0,	
+					hbX: 45,
+					hbY: 45,
+					col: "#667744",
+					mDmg: 1,
+					rDmg: 1,
+					money: 6,
+					cdownshoot: 60,
+					cdown: 0
+				});
+			}
+			else
+			{
+				Enemies.push({
+					type: 1,
+					hp: 8,
+					mhp: 8,
+					x: (Math.random() * -200 + getPosFromRail(0)[0] + 800),
+					y: (Math.random() * 900 - getPosFromRail(0)[1] - 450),
+					vx: 0,
+					vy: 0,
+					hbX: 45,
+					hbY: 45,
+					col: "#667744",
+					mDmg: 1,
+					rDmg: 1,
+					money: 6,
+					cdownshoot: 60,
+					cdown: 0
+				});
+				
+			}
+
+		}
+	}
+
+    }
+    function setBlock(block, x, y)
+    {
+	if (block == 0)
+	{
+		World.push([x,y,0,10,true,true,true,10,0])
+	}
+	if (block == 1)
+	{
+		World.push([x,y,1,8,false,false,true,8,0])
+	}
+	if (block == 2)
+	{
+		World.push([x,y,2,24,true,true,false,24,0])
+	}
+	if (block == 3)
+	{
+		World.push([x,y,3,15,true,true,true,15,0])
+	}
+	if (block == 4)
+	{
+		World.push([x,y,4,7,false,false,true,7,0])
+	}
+	if (block == 5)
+	{
+		World.push([x,y,5,20,true,true,true,20,0])
+	}
+	if (block == 6)
+	{
+		World.push([x,y,6,9,true,false,true,9,0])
+	}
+	if (block == 7)
+	{
+		World.push([x,y,7,18,true,true,true,18,0])
+	}
+	if (block == 8)
+	{
+		World.push([x,y,8,16,true,true,true,16,0])
+	}
+    }
+ 
+    // how to make get pos from rail
+    // get the rail the player is on by railOn
+    // get player's position on rail through railpos
+    // add rail's starting position to player position
+    // add railpos * Math.cos(Rails[railOn][0]) to player's x position
+    // add railpos * Math.sin(Rails[railOn][0]) to player's y position
+    // now you have player position
+    function getPosFromRail(player)
+    {
+	var plyrRail = Players[player].railOn;
+	var plyrX = Rails[plyrRail][2];
+	var plyrY = Rails[plyrRail][3];
+	plyrX = plyrX + Players[player].railpos * Math.cos(Rails[plyrRail][0]);
+	plyrY = plyrY + Players[player].railpos * Math.sin(Rails[plyrRail][0]);
+	return [plyrX,plyrY];
+    }
+    function angle(cx, cy, ex, ey) {
+	var dy = ey - cy;
+	var dx = ex - cx;
+	var theta = Math.atan2(dy, dx);
+	return theta;
+    }
+    document.addEventListener("keydown", function (event) {
+	if (menuState == 2)
+	{
+		plyrpos = getPosFromRail(0)
+		PlyX = plyrpos[0]
+		PlyY = plyrpos[1]
+		MX = cursorX;
+		MY = cursorY;
+		MA = angle(-MX + 800, MY - 450,0,0);
+		if (event.key == 'w') {
+			Players[0].railvel = Players[0].railvel + Players[0].railspeed * (Players[0].charged + 1) / 2
+		}
+		if (event.keyCode == 8) {
+			deletingblock = findBlock(Players[0].targetposX,Players[0].targetposY)
+			console.log(MX+" "+MY);
+			console.log(deletingblock);
+			if (deletingblock >= 0) {
+				World.splice(deletingblock,1);
+				money = money + 2;
+			}
+		}
+		if (event.keyCode == 32 && Players[0].weaponCooldown <= 0) {
+			if (Players[0].weapon == 1)
+			{
+				for(var i = 0; i < 6; i++)
+				{
+					Projectiles.push([PlyX+Math.random()*50-25,PlyY+Math.random()*50-25,(85+Math.random()*15)*Math.cos(MA-Math.PI*0.07+Math.random()*Math.PI*0.14),(85+Math.random()*15)*Math.sin(MA-Math.PI*0.07+Math.random()*Math.PI*0.14),0,true,2,false,2,"#ffdd22"]); //cooldown: 1.55 sec
+				}
+				Players[0].weaponCooldown = 60*1.55 // 7.75 dps
+			}
+			if (Players[0].weapon == 2)
+			{
+				Projectiles.push([PlyX,PlyY,(90+Math.random()*10)*Math.cos(MA),(90+Math.random()*10)*Math.sin(MA),0,true,1,false, 1,"#ffaa11"]); //cooldown: 0.125 sec
+				Players[0].weaponCooldown = 60*0.125 //8 dps
+			}
+			if (Players[0].weapon == 3)
+			{
+				for(var i = 0; i < 3; i++)
+				{
+					Projectiles.push([PlyX + 5*i*Math.cos(MA),PlyY + 5*i*Math.sin(MA),(80+Math.random()*20)*Math.cos(MA),(80+Math.random()*20)*Math.sin(MA),0,true,1,false,1,"#eeaa55"]); //cooldown: 0.4 sec
+				}
+				Players[0].weaponCooldown = 60*0.4 //7.5 dps
+			}
+			if (Players[0].weapon == 4)
+			{
+				Projectiles.push([PlyX,PlyY,120*Math.cos(MA),120*Math.sin(MA),0,true,7,true,2,"#aabbff"]); //cooldown: 1 sec
+				Players[0].weaponCooldown = 60*1 //DPS: 7 dps
+			}
+			if (Players[0].weapon == 5)
+			{
+				Projectiles.push([PlyX,PlyY,80*Math.cos(MA),80*Math.sin(MA),0,true,10,false,5,"#444444"]); //cooldown: 1.4 sec
+				Players[0].weaponCooldown = 60*1.4 //7.1 dps
+			}
+			//console.log(Projectiles[Projectiles.length-1][5])
+		} 
+		if (event.key == 's') {
+			if (Math.abs(Players[0].railvel) < 1)
+			{
+				Players[0].railvel = -1;
+			}
+			Players[0].railvel = Players[0].railvel - Players[0].railspeed * (Players[0].charged + 1) / 2
+		} 
+		if (event.keyCode == 38) {
+			Players[0].targetposY = Players[0].targetposY + 1;
+        	}
+		if (event.keyCode == 40) {
+			Players[0].targetposY = Players[0].targetposY - 1;
+        	}
+		if (event.keyCode == 37) {
+			Players[0].targetposX = Players[0].targetposX - 1;
+        	}
+		if (event.keyCode == 39) {
+			Players[0].targetposX = Players[0].targetposX + 1;
+        	}
+		if (event.key == 'r') {
+			var block = findBlock(Players[0].targetposX, Players[0].targetposY)
+			//console.log(block)
+			if (block >= 0 && Players[0].weaponCooldown <= 0)
+			{
+				//console.log(World[block][3] + " " + World[block][7])
+				if (World[block][3] < World[block][7])
+				{
+					World[block][3] = World[block][3] + 1;
+					Players[0].weaponCooldown = 12; // 5 repairs / sec
+		
+				}
+
+			}
+        	}
+		if (event.key == '0') {
+			if (money >= 10)
+			{
+				var ok = true;
+				for (var i = 0; i < World.length; i++)
+				{
+					if (World[i][0] == Players[0].targetposX)
+					{
+						if (World[i][1] == Players[0].targetposY)
+						{
+							ok = false;
+							console.log("Invalid position!");
+						}
+					}
+				}
+				if (ok)
+				{
+				setBlock(0,Players[0].targetposX,Players[0].targetposY);
+				money = money - 10;
+				}
+			}
+        	}
+		if (event.key == '1') {
+			if (money >= 10)
+			{
+				var ok = true;
+				for (var i = 0; i < World.length; i++)
+				{
+					if (World[i][0] == Players[0].targetposX)
+					{
+						if (World[i][1] == Players[0].targetposY)
+						{
+							ok = false;
+							console.log("Invalid position!");
+						}
+					}
+				}
+				if (ok)
+				{
+					setBlock(1,Players[0].targetposX,Players[0].targetposY);
+				money = money - 10;
+				}
+			}
+        	}
+		if (event.key == '2') {
+			if (money >= 15)
+			{
+				var ok = true;
+				for (var i = 0; i < World.length; i++)
+				{
+					if (World[i][0] == Players[0].targetposX)
+					{
+						if (World[i][1] == Players[0].targetposY)
+						{
+							ok = false;
+							console.log("Invalid position!");
+						}
+					}
+				}
+				if (ok)
+				{
+					setBlock(2,Players[0].targetposX,Players[0].targetposY);
+				money = money - 15;
+				}
+			}
+        	}
+		if (event.key == '3') {
+			if (money >= 85)
+			{
+				var ok = true;
+				for (var i = 0; i < World.length; i++)
+				{
+					if (World[i][0] == Players[0].targetposX)
+					{
+						if (World[i][1] == Players[0].targetposY)
+						{
+							ok = false;
+							console.log("Invalid position!");
+						}
+					}
+				}
+				if (ok)
+				{
+					setBlock(3,Players[0].targetposX,Players[0].targetposY);
+				money = money - 85;
+				}
+			}
+        	}
+		if (event.key == '4') {
+			if (money >= 50)
+			{
+				var ok = true;
+				for (var i = 0; i < World.length; i++)
+				{
+					if (World[i][0] == Players[0].targetposX)
+					{
+						if (World[i][1] == Players[0].targetposY)
+						{
+							ok = false;
+							console.log("Invalid position!");
+						}
+					}
+				}
+				if (ok)
+				{
+					setBlock(4,Players[0].targetposX,Players[0].targetposY);
+				money = money - 50;
+				}
+			}
+        	}
+		if (event.key == '5') {
+			if (money >= 80)
+			{
+				var ok = true;
+				for (var i = 0; i < World.length; i++)
+				{
+					if (World[i][0] == Players[0].targetposX)
+					{
+						if (World[i][1] == Players[0].targetposY)
+						{
+							ok = false;
+							console.log("Invalid position!");
+						}
+					}
+				}
+				if (ok)
+				{
+					setBlock(5,Players[0].targetposX,Players[0].targetposY);
+					money = money - 80;
+				}
+			}
+        	}
+		if (event.key == '6') {
+			if (money >= 20)
+			{
+				var ok = true;
+				for (var i = 0; i < World.length; i++)
+				{
+					if (World[i][0] == Players[0].targetposX)
+					{
+						if (World[i][1] == Players[0].targetposY)
+						{
+							ok = false;
+							console.log("Invalid position!");
+						}
+					}
+				}
+				if (ok)
+				{
+					setBlock(6,Players[0].targetposX,Players[0].targetposY);
+				money = money - 20;
+				}
+			}
+        	}
+		if (event.key == '7') {
+			if (money >= 125)
+			{
+				var ok = true;
+				for (var i = 0; i < World.length; i++)
+				{
+					if (World[i][0] == Players[0].targetposX)
+					{
+						if (World[i][1] == Players[0].targetposY)
+						{
+							ok = false;
+							console.log("Invalid position!");
+						}
+					}
+				}
+				if (ok)
+				{
+					setBlock(7,Players[0].targetposX,Players[0].targetposY);
+					money = money - 125;
+				}
+			}
+        	}
+		if (event.key == '8') {
+			if (money >= 95)
+			{
+				var ok = true;
+				for (var i = 0; i < World.length; i++)
+				{
+					if (World[i][0] == Players[0].targetposX)
+					{
+						if (World[i][1] == Players[0].targetposY)
+						{
+							ok = false;
+							console.log("Invalid position!");
+						}
+					}
+				}
+				if (ok)
+				{
+					setBlock(8,Players[0].targetposX,Players[0].targetposY);
+					money = money - 95;
+				}
+			}
+        	}
+	}
+     });
+    document.addEventListener("keypress", function (event) {
+	if (menuState == 1)
+	{
+		if (parseInt(event.key) < 6) {    
+			Players.push({
+				maxhp: 20,
+				hp: 20,
+				railOn: 0,
+				railpos: 20,
+				railvel: 0,
+				railspeed: 1,
+				weapon: parseInt(event.key),
+				weaponCooldown: 0,
+				targetposX: 0,
+				targetposY: 0,
+				targetposWorldX: 0,
+				targetposWorldY: 0,
+				charged: 1
+			});
+			menuState = 2;
+			setBlock(3,-2,4);
+			setBlock(7,1,4);
+			for (var i = 0; i < 200 + Math.random(); i++)
+			{
+				if (i == 0)
+				{
+					Rails.push([(Math.PI)/2,800,0,0])
+				}
+				else
+				{
+					Rails.push([Math.random()*Math.PI,200+Math.random()*600, Rails[i-1][1] * Math.cos(Rails[i-1][0]) + Rails[i-1][2], Rails[i-1][1] * Math.sin(Rails[i-1][0]) + Rails[i-1][3]])
+				}
+			}
+       		}
+	}
+	if (menuState == 0)
+	{
+		menuState = 1;
+	}
+    });
+
+    var fps = 60;
+    setInterval(Main, 1000 / fps); //Uses FPS as frames per second
+    var starpositions = []
+    for (var i = 0; i < 20 + Math.random() * 20; i++)
+    {
+	starpositions.push([Math.random()*1600,Math.random()*900,Math.random()*2+5]);
+    }
+    function Main() {
+	if (menuState == 2)
+	{
+		if (Players[0].railpos > Rails[Players[0].railOn][1] && Players[0].railOn < Rails.length - 1)
+		{
+				Players[0].railpos = 0;
+				Players[0].railOn = Players[0].railOn + 1;
+		}	
+		if (Players[0].railpos > Rails[Players[0].railOn][1] && Players[0].railOn >= Rails.length - 1)
+		{
+			Players[0].railpos = Rails[Players[0].railOn][1];
+			Players[0].railvel = 0;
+		}
+		if (Players[0].railpos < 0 && Players[0].railOn > 0)
+		{
+				Players[0].railOn = Players[0].railOn - 1;
+				Players[0].railpos = Rails[Players[0].railOn][1];
+		}
+		if (Players[0].railpos < 0 && Players[0].railOn <= 0)
+		{
+				Players[0].railOn = 0;
+				Players[0].railpos = 0;
+				Players[0].railvel = 0;
+		}
+		Players[0].railpos = Players[0].railpos + Players[0].railvel;
+		Players[0].railvel = Players[0].railvel * 0.99;
+		playerpos = getPosFromRail(0)
+		if (Math.abs(Players[0].railvel) < 0.5)
+		{
+			Players[0].railvel = 0;
+		}
+		//align target pos to grid
+		if (-playerpos[0]+(Players[0].targetposX)*100 > 490)
+		{
+			Players[0].targetposX = Players[0].targetposX - 1
+		}
+		if (-playerpos[0]+(Players[0].targetposX)*100 < -510)
+		{
+			Players[0].targetposX = Players[0].targetposX + 1
+		}
+		if (-playerpos[1]+(Players[0].targetposY)*100 > 500)
+		{
+			Players[0].targetposY = Players[0].targetposY - 1
+		}
+		if (-playerpos[1]+(Players[0].targetposY)*100 < -400)
+		{
+			Players[0].targetposY = Players[0].targetposY + 1
+		}
+		var toDelete = []
+		for (var j = 0; j < Projectiles.length; j++)
+		{
+			//console.log("Projectile time");
+			Projectiles[j][0] = Projectiles[j][0] + Projectiles[j][2] / 6
+			Projectiles[j][1] = Projectiles[j][1] + Projectiles[j][3] / 6
+			Projectiles[j][4] = Projectiles[j][4] + 1
+			if (Projectiles[j][4] > 90)
+			{
+				toDelete.push(j)
+			}
+		}
+		if (Players[0].weaponCooldown > 0)
+		{
+			Players[0].weaponCooldown = Players[0].weaponCooldown - 1;
+		}
+		for (var k = 0; k < toDelete.length; k++)
+		{
+			Projectiles.splice(toDelete[k],1);
+		}
+		var loadedBlocks = [];
+		var hasCharger = 0;
+		var medPower = 0;
+		for (var l = 0; l < World.length; l++)
+		{
+			if (World[l][0] * 100 > playerpos[0] - 900)
+			{
+				if (World[l][0] * 100 < playerpos[0] + 900)
+				{
+					if (World[l][1] * 100 > playerpos[1] - 550)
+					{
+						if (World[l][1] * 100 < playerpos[1] + 550)
+						{
+							if (World[l][2] == 3)
+							{
+								hasCharger = hasCharger + 1;
+							}
+							if (World[l][2] == 7)
+							{
+								medPower = medPower + 1;
+							}
+							loadedBlocks.push(l);
+						}
+					}
+				}
+			}
+		}
+		if (hasCharger == 0)
+		{
+			hasCharger = (1 - Math.sqrt(Math.sqrt(Math.random())))/17;
+		}
+		if (medPower > 0)
+		{
+			if (Math.random() < 1/(60 / Math.sqrt(medPower)))
+			{
+				if (Players[0].hp < Players[0].maxhp)
+				{
+					Players[0].hp = Players[0].hp + 1
+				}
+			}	
+		}
+		Players[0].charged = hasCharger;
+		//console.log(loadedBlocks);
+		var projectilesToDelete = [];
+		//console.log(loadedBlocks.length)
+		for (var m = 0; m < loadedBlocks.length; m++)
+		{
+			for (var n = 0; n < Projectiles.length; n++)
+			{
+				if (World[loadedBlocks[m]][0] * 100 + 100> Projectiles[n][0])
+				{
+					
+					if (World[loadedBlocks[m]][0] * 100 < Projectiles[n][0])
+					{
+						
+						if (World[loadedBlocks[m]][1] * 100 > Projectiles[n][1])	
+						{
+							
+							if (World[loadedBlocks[m]][1] * 100 - 100 < Projectiles[n][1])
+							{
+								if (World[loadedBlocks[m]][4] == true && Projectiles[n][5] == false)
+								{
+						
+									World[loadedBlocks[m]][3] = World[loadedBlocks[m]][3] - Projectiles[n][6];
+									projectilesToDelete.push(n);
+								}
+								if (World[loadedBlocks[m]][5] == true && Projectiles[n][5] == true)
+								{
+									projectilesToDelete.push(n);
+								}
+							}
+						}
+					}
+				}	
+			}
+			if (Enemies.length > 0 && World[loadedBlocks[m]][8] <= 0 && World[loadedBlocks[m]][2] == 4)
+			{
+				var closestEnemy = -1;
+				var closestEnemyDist = 400; // also defines max gun range
+				var blockX = World[loadedBlocks[m]][0] * 100 + 50;
+				var blockY = World[loadedBlocks[m]][1] * 100 - 50;
+				for (var e = 0; e < Enemies.length; e++)
+				{
+					var enX = Enemies[e].x;
+					var enY = -Enemies[e].y;
+					var dx = Math.abs(blockX - enX);
+					var dy = Math.abs(blockY - enY);
+					var d = Math.sqrt(dx*dx + dy*dy);
+					if (d < closestEnemyDist)
+					{
+						closestEnemy = e;
+						closestEnemyDist = d;
+					}
+				}
+				if (closestEnemy >= 0)
+				{
+					var closestEnemyX = Enemies[closestEnemy].x;
+					var closestEnemyY = -Enemies[closestEnemy].y;
+					var MA2 = angle(blockX, blockY, closestEnemyX, closestEnemyY);
+					Projectiles.push([blockX,blockY,(40+Math.random()*15)*Math.cos(MA2),(40+Math.random()*15)*Math.sin(MA2),0,true,1,false,1,"#eebb33"]);
+					World[loadedBlocks[m]][8] = 15;
+				}
+				
+			}
+			if (Enemies.length > 0 && World[loadedBlocks[m]][8] <= 0 && World[loadedBlocks[m]][2] == 5)
+			{
+				var closestEnemy = -1;
+				var closestEnemyDist = 700; // also defines max gun range
+				var blockX = World[loadedBlocks[m]][0] * 100 + 50;
+				var blockY = World[loadedBlocks[m]][1] * 100 - 50;
+				for (var e = 0; e < Enemies.length; e++)
+				{
+					var enX = Enemies[e].x;
+					var enY = -Enemies[e].y;
+					var dx = Math.abs(blockX - enX);
+					var dy = Math.abs(blockY - enY);
+					var d = Math.sqrt(dx*dx + dy*dy);
+					if (d < closestEnemyDist)
+					{
+						closestEnemy = e;
+						closestEnemyDist = d;
+					}
+				}
+				if (closestEnemy >= 0)
+				{
+					var closestEnemyX = Enemies[closestEnemy].x;
+					var closestEnemyY = -Enemies[closestEnemy].y;
+					var MA2 = angle(blockX, blockY, closestEnemyX, closestEnemyY);
+					var projpos = moveOut(50,MA2)
+					console.log(projpos)
+					Projectiles.push([blockX+projpos[0],blockY+projpos[1],(60+Math.random()*10)*Math.cos(MA2),(60+Math.random()*10)*Math.sin(MA2),0,true,10,false,4,"#aa7733"]);
+					World[loadedBlocks[m]][8] = 30;
+				}
+				
+			}
+			if (Enemies.length > 0 && World[loadedBlocks[m]][2] == 8)
+			{
+				var closestEnemy = -1;
+				var closestEnemyDist = 300; // also defines max gun range
+				var blockX = World[loadedBlocks[m]][0] * 100 + 50;
+				var blockY = World[loadedBlocks[m]][1] * 100 - 50;
+				for (var e = 0; e < Enemies.length; e++)
+				{
+					var enX = Enemies[e].x;
+					var enY = -Enemies[e].y;
+					var dx = Math.abs(blockX - enX);
+					var dy = Math.abs(blockY - enY);
+					var d = Math.sqrt(dx*dx + dy*dy);
+					if (d < closestEnemyDist)
+					{
+						closestEnemy = e;
+						closestEnemyDist = d;
+					}
+				}
+				if (closestEnemy >= 0 && World[loadedBlocks[m]][8] == 0)
+				{
+					var MA2 = 0;
+					var projpos = moveOut(45,MA2)
+					console.log(projpos)
+					Projectiles.push([blockX+projpos[0]+Math.random()*120-60,blockY+projpos[1]+Math.random()*120-60,(40+Math.random()*10)*Math.cos(MA2),(40+Math.random()*10)*Math.sin(MA2),40,true,3,false,2,"#ff4400"]);
+					World[loadedBlocks[m]][8] = 4;
+				}
+				if (closestEnemy >= 0 && World[loadedBlocks[m]][8] == 3)
+				{
+					var MA2 = Math.PI/2;
+					var projpos = moveOut(45,MA2)
+					console.log(projpos)
+					Projectiles.push([blockX+projpos[0]+Math.random()*120-60,blockY+projpos[1]+Math.random()*120-60,(40+Math.random()*10)*Math.cos(MA2),(40+Math.random()*10)*Math.sin(MA2),40,true,3,false,2,"#ff4400"]);
+				}
+				if (closestEnemy >= 0 && World[loadedBlocks[m]][8] == 2)
+				{
+					var MA2 = Math.PI;
+					var projpos = moveOut(45,MA2)
+					console.log(projpos)
+					Projectiles.push([blockX+projpos[0]+Math.random()*120-60,blockY+projpos[1]+Math.random()*120-60,(40+Math.random()*10)*Math.cos(MA2),(40+Math.random()*10)*Math.sin(MA2),40,true,3,false,2,"#ff4400"]);
+				}
+				if (closestEnemy >= 0 && World[loadedBlocks[m]][8] == 1)
+				{
+					var MA2 = 3*Math.PI/2;
+					var projpos = moveOut(45,MA2)
+					console.log(projpos)
+					Projectiles.push([blockX+projpos[0]+Math.random()*120-60,blockY+projpos[1]+Math.random()*120-60,(40+Math.random()*10)*Math.cos(MA2),(40+Math.random()*10)*Math.sin(MA2),40,true,3,false,2,"#ff4400"]);
+				}
+				
+			}
+			if (World[loadedBlocks[m]][8] > 0)
+			{
+				World[loadedBlocks[m]][8] = World[loadedBlocks[m]][8] - 1
+			}
+		}
+		for (var k = 0; k < projectilesToDelete.length; k++)
+		{
+			Projectiles.splice(projectilesToDelete[k],1);
+		}
+		projectilesToDelete = [];
+		//enemy killin code goes here
+		for (var n = 0; n < Projectiles.length; n++)
+		{
+			if (Projectiles[n][5] == false)
+			{
+				if (playerpos[0] < Projectiles[n][0])
+				{
+					if (playerpos[0] + 50 > Projectiles[n][0])
+					{
+						if (playerpos[1] - 25 < Projectiles[n][1])
+						{
+							if (playerpos[1] + 25 > Projectiles[n][1])
+							{
+								{
+									projectilesToDelete.push(n);
+									Players[0].hp = Players[0].hp - Projectiles[n][6]
+								}
+							}
+						}
+					}
+				}
+			}
+			for (var e = 0; e < Enemies.length; e++)
+			{
+				if (Enemies[e].x + Enemies[e].hbX > Projectiles[n][0])
+				{	
+					//console.log("1");	
+					if (Enemies[e].x < Projectiles[n][0])
+					{
+						//console.log("2");		
+						if (-Enemies[e].y - Enemies[e].hbY / 2  < Projectiles[n][1])
+						{	
+							//console.log("3  "+(-Enemies[e].y)+"  "+Projectiles[n][1]);
+							if (-Enemies[e].y + Enemies[e].hbY / 2 > Projectiles[n][1])
+							{
+								//console.log("4!");
+								if (Projectiles[n][5] == true)
+								{
+									Enemies[e].hp = Enemies[e].hp - Projectiles[n][6];
+									if (Projectiles[n][7] != true)
+									{
+										projectilesToDelete.push(n);
+									}
+									else
+									{
+										var projangle = Math.atan2(Projectiles[n][2],Projectiles[n][3])
+										var movedist = Math.sqrt(Enemies[e].hbX*Enemies[e].hbX+Enemies[e].hbY*Enemies[e].hbY)
+										Projectiles[n][0] = Projectiles[n][0] + 1.1 * movedist*Math.sin(projangle);
+										Projectiles[n][1] = Projectiles[n][1] + 1.1 * movedist*Math.cos(projangle);
+										console.log("hit");
+									}
+								}
+							}
+						}
+					}
+				}
+
+			}	
+		}
+		for (var k = 0; k < projectilesToDelete.length; k++)
+		{
+			Projectiles.splice(projectilesToDelete[k],1);
+		}
+		while (Math.random() * 240 < 0.5)
+		{
+			spawnEnemy(1);
+		}
+		var DeadEnemies = [];
+		for (var m = 0; m < Enemies.length; m++)
+		{
+			var angleToPlayer = angle(playerpos[0],playerpos[1],Enemies[m].x,-Enemies[m].y)
+			//console.log(angleToPlayer);
+			Enemies[m].x = Enemies[m].x + Enemies[m].vx;
+			Enemies[m].y = Enemies[m].y + Enemies[m].vy;
+			Enemies[m].vx = Enemies[m].vx * 0.97;
+			Enemies[m].vy = Enemies[m].vy * 0.97;
+			if (Enemies[m].type == 0)
+			{ 
+				if (Enemies[m].x < playerpos[0])
+				{
+					if (Math.abs(Enemies[m].x - playerpos[0]) < 200)
+					{
+						Enemies[m].vx = Enemies[m].vx - Math.cos(angleToPlayer)*0.5*Math.random();
+						Enemies[m].vy = Enemies[m].vy + Math.sin(angleToPlayer)*0.5*Math.random();
+					}
+					else
+					{
+						Enemies[m].vx = Enemies[m].vx + 0.2;
+					}
+				}
+				else
+				{
+					if (Math.abs(Enemies[m].x - playerpos[0]) < 200)
+					{
+						Enemies[m].vx = Enemies[m].vx - Math.cos(angleToPlayer)*0.5*Math.random();
+						Enemies[m].vy = Enemies[m].vy + Math.sin(angleToPlayer)*0.5*Math.random();
+					}
+					else
+					{
+						Enemies[m].vx = Enemies[m].vx - 0.2;
+					}
+
+				}
+			}
+			if (Enemies[m].type == 1)
+			{ 
+				if (Enemies[m].x < playerpos[0])
+				{
+					if (Math.abs(Enemies[m].x - playerpos[0]) < 300)
+					{
+						Enemies[m].vx = Enemies[m].vx - 0.15;
+						Enemies[m].vy = Enemies[m].vy + Math.random() * 0.2 - 0.1 + Math.sin(angleToPlayer)*0.2*Math.random();
+						if (Enemies[m].cdown <= 0)
+						{
+							var PX = playerpos[0];
+							var PY = playerpos[1];
+							var MA2 = angle(Enemies[m].x,-Enemies[m].y, PX, PY);
+							Enemies[m].cdown = Enemies[m].cdownshoot;
+							Projectiles.push([Enemies[m].x,-Enemies[m].y,(40+Math.random()*15)*Math.cos(MA2),(40+Math.random()*15)*Math.sin(MA2),0,false,Enemies[m].rDmg,false,3,"#44ee44"]);
+							console.log(Projectiles.length)
+							console.log(Projectiles[Projectiles.length-1])
+						}
+					}
+					else
+					{
+						Enemies[m].vx = Enemies[m].vx + 0.15;
+					}
+				}
+				else
+				{
+					if (Math.abs(Enemies[m].x - playerpos[0]) < 300)
+					{
+						Enemies[m].vx = Enemies[m].vx + 0.15;
+						Enemies[m].vy = Enemies[m].vy + Math.random() * 0.2 - 0.1 + Math.sin(angleToPlayer)*0.2*Math.random();
+						if (Enemies[m].cdown <= 0)
+						{
+							var closestEnemyX = playerpos[0];
+							var closestEnemyY = playerpos[1];
+							var MA2 = angle(Enemies[m].x,-Enemies[m].y, closestEnemyX, closestEnemyY);
+							Enemies[m].cdown = Enemies[m].cdownshoot;
+							Projectiles.push([Enemies[m].x,-Enemies[m].y,(40+Math.random()*15)*Math.cos(MA2),(40+Math.random()*15)*Math.sin(MA2),0,false,Enemies[m].rDmg,false,3,"#44ee44"]);
+							console.log(Projectiles.length)
+						}
+					}
+					else
+					{
+						Enemies[m].vx = Enemies[m].vx - 0.15;
+					}
+
+				}
+				if (Enemies[m].cdown > 0)
+				{
+					Enemies[m].cdown = Enemies[m].cdown - 1;
+				}
+			}
+			if (Enemies[m].x > playerpos[0])
+			{
+				if (Enemies[m].x < playerpos[0] + 50)
+				{
+					if (-Enemies[m].y < playerpos[1])
+					{
+						if (-Enemies[m].y < playerpos[1] + 50)
+						{
+							if (Math.random() < 1/(60/Enemies[m].mDmg))
+							{
+								Players[0].hp = Players[0].hp - 1;
+							}
+
+						}
+
+					}
+
+				}
+			}
+			for (var n = 0; n < loadedBlocks.length; n++)
+			{
+				if (World[loadedBlocks[n]][6] == true)
+				{
+					if (World[loadedBlocks[n]][0] * 100 + 100 > Enemies[m].x)
+					{
+						if (World[loadedBlocks[n]][0] * 100 < Enemies[m].x + Enemies[m].hbX)
+						{	
+							if (World[loadedBlocks[n]][1] * 100 > -Enemies[m].y - Enemies[m].hbY)	
+							{
+								if (World[loadedBlocks[n]][1] * 100 - 100 < -Enemies[m].y)
+								{
+									//PUSH IT OUT!!!
+									if (Math.abs(Enemies[m].vx) > Math.abs(Enemies[m].vy))
+									{
+										if (Enemies[m].x < World[loadedBlocks[n]][0] * 100 + 50)
+										{
+											Enemies[m].x = World[loadedBlocks[n]][0] * 100 - Enemies[m].hbX
+										}
+										else if (Enemies[m].x > World[loadedBlocks[n]][0] * 100 + 50)
+										{
+											Enemies[m].x = World[loadedBlocks[n]][0] * 100 + 100
+										}
+									}
+									else
+									{
+										//console.log((World[loadedBlocks[n]][1] * 100) + "  " + -Enemies[m].y)
+										if (-Enemies[m].y > World[loadedBlocks[n]][1] * 100 - 50)
+										{
+											Enemies[m].y = -World[loadedBlocks[n]][1] * 100 - Enemies[m].hbY
+											//console.log("Bottom collision?");
+										}
+										else if (-Enemies[m].y < World[loadedBlocks[n]][1] * 100 - 50)
+										{
+											Enemies[m].y = -World[loadedBlocks[n]][1] * 100 + 100
+											//console.log("Top collision?");
+										}
+									}
+									if (Math.random() < 1/(60/Enemies[m].mDmg))
+									{
+										World[loadedBlocks[n]][3] = World[loadedBlocks[n]][3] - 1;
+									}									
+								}
+							}
+						}
+					}
+				}
+			}
+			if (Enemies[m].hp <= 0)
+			{
+				DeadEnemies.push(m);
+			}
+		}
+		for (var o = 0; o < DeadEnemies.length; o++)
+		{
+			money = money + Enemies[DeadEnemies[o]].money;
+			Enemies.splice(DeadEnemies[o],1);
+		}
+		var destBlocks = [];
+		for (var n = 0; n < loadedBlocks.length; n++)
+		{
+			if (World[loadedBlocks[n]][3] <= 0)
+			{
+				destBlocks.push(n);
+			}
+
+		}
+		for (var o = 0; o < destBlocks.length; o++)
+		{
+			World.splice(destBlocks[o],1);
+		}
+		if (Players[0].hp <= 0)
+		{
+			menuState = 5
+		}
+	}
+	Render()
+    }
+    var clouds = []
+    var cloudchance = 1/60/4
+    function Render() {
+	if (menuState == 0)
+	{
+        	canvas.fillStyle = "#2D3A85";
+        	canvas.fillRect(0, 0, screen.width, screen.height);
+		for (var i = 0; i < starpositions.length; i++)
+		{
+			if (Math.random() < 0.9)
+			{
+				canvas.fillStyle = "#FCF8EB";
+			}
+			else
+			{
+				canvas.fillStyle = "#EDDCA4";
+				starpositions[i][2] = Math.random()*2+5;
+			}
+        		canvas.fillRect(starpositions[i][0]-1, starpositions[i][1]-1, starpositions[i][2], starpositions[i][2]);
+			starpositions[i][1] = starpositions[i][1] + 1;
+			if (starpositions[i][1] > 900)
+			{
+				starpositions[i][2] = Math.random()*2+5;
+				starpositions[i][1] = 0;
+				starpositions[i][0] = Math.random()*1600;
+			}
+		}
+		if (Math.random() < 0.9)
+		{
+				canvas.fillStyle = "#FCF8EB";
+		}
+		else
+		{
+			canvas.fillStyle = "#EDDCA4";
+		}
+		canvas.font = "60px Helvetica";
+		canvas.fillText("Planet Tower", 400, 300)
+		if (Math.random() < 0.9)
+		{
+				canvas.fillStyle = "#FCF8EB";
+		}
+		else
+		{
+			canvas.fillStyle = "#EDDCA4";
+		}
+		canvas.font = "30px Helvetica";
+		canvas.fillText("Press anything to begin", 403, 340)
+		canvas.beginPath();
+		canvas.lineWidth = "6";
+		canvas.strokeStyle = "#7d1a4f";
+		canvas.arc(1200, 700, 500, 0, 2*Math.PI);
+		canvas.stroke();
+       	}
+	if (menuState == 1)
+	{
+		canvas.fillStyle = "#50515c";
+        	canvas.fillRect(0, 0, screen.width, screen.height);
+		if (Math.random() < 0.9)
+		{
+			canvas.fillStyle = "#FCF8EB";
+		}
+		else
+		{
+			canvas.fillStyle = "#EDDCA4";
+		}
+		canvas.font = "40px Helvetica";
+		canvas.fillText("Select your weapon:", 1200, 100)
+		canvas.beginPath();
+		canvas.lineWidth = "3";
+		canvas.strokeStyle = "#eddca4";
+		canvas.rect(1200, 150, 380, 120);
+		canvas.rect(1200, 300, 380, 120);
+		canvas.rect(1200, 450, 380, 120);
+		canvas.rect(1200, 600, 380, 120);
+		canvas.rect(1200, 750, 380, 120);
+		canvas.stroke();
+		if (Math.random() < 0.9)
+		{
+			canvas.fillStyle = "#FCF8EB";
+		}
+		else
+		{
+			canvas.fillStyle = "#EDDCA4";
+		}
+		canvas.fillText("Shotgun (1)", 1220, 225)
+		if (Math.random() < 0.9)
+		{
+			canvas.fillStyle = "#FCF8EB";
+		}
+		else
+		{
+			canvas.fillStyle = "#EDDCA4";
+		}
+		canvas.fillText("Assault Rifle (2)", 1220, 225+150)
+		if (Math.random() < 0.9)
+		{
+			canvas.fillStyle = "#FCF8EB";
+		}
+		else
+		{
+			canvas.fillStyle = "#EDDCA4";
+		}
+		canvas.fillText("Burst Rifle (3)", 1220, 225+300)
+		if (Math.random() < 0.9)
+		{
+			canvas.fillStyle = "#FCF8EB";
+		}
+		else
+		{
+			canvas.fillStyle = "#EDDCA4";
+		}
+		canvas.fillText("Sniper Rifle (4)", 1220, 225+450)
+		if (Math.random() < 0.9)
+		{
+			canvas.fillStyle = "#FCF8EB";
+		}
+		else
+		{
+			canvas.fillStyle = "#EDDCA4";
+		}
+		canvas.fillText("Cannon (5)", 1220, 225+600)
+		canvas.font = "20px Helvetica";
+		canvas.fillText("Deals the highest total damage per shot of any weapon, but it's inaccurate.", 530, 225)
+		canvas.fillText("Has the highest single-target DPS of any weapon.", 750, 225+150)
+		canvas.fillText("An all-around average weapon.", 910, 225+300)
+		canvas.fillText("Pierces enemies, giving it the highest potential damage of any weapon.", 560, 225+450)
+		canvas.fillText("Deals the highest damage per bullet of any weapon.", 730, 225+600)
+		canvas.font = "10px Helvetica";
+		canvas.fillText("DPS: 7.75   D/R: 2   D/SHOT: 12    REL: 1.55", 530, 225+20)
+		canvas.fillText("DPS: 8   D/R: 1   D/SHOT: 1    REL: 0.125", 750, 225+150+20)
+		canvas.fillText("DPS: 7.5   D/R: 1   D/SHOT: 3    REL: 0.4", 940, 225+300+20)
+		canvas.fillText("DPS: 7   D/R: 7   D/SHOT: 7    REL: 1", 560, 225+450+20)
+		canvas.fillText("DPS: 7.1   D/R: 10   D/SHOT: 10    REL: 1.5", 730, 225+600+20)
+		if (Math.random() < 0.9)
+		{
+			canvas.fillStyle = "#FCF8EB";
+		}
+		else
+		{
+			canvas.fillStyle = "#EDDCA4";
+		}
+		canvas.font = "30px Helvetica";
+		canvas.fillText("Controls (Space to shoot)", 10, 100)
+		canvas.font = "20px Helvetica";
+		canvas.fillText("W: Move up the rail", 10, 150);
+		canvas.fillText("S: Move down the rail", 10, 200);
+		canvas.fillText("Arrow Keys: Move your wrench cursor", 10, 250);
+		canvas.fillText("R: Repair block at cursor", 10, 300);
+		canvas.fillText("0-9: Build blocks at cursor", 10, 350);
+		canvas.fillText("Backspace: Sell block at cursor", 10, 400);
+		canvas.font = "30px Helvetica";
+		canvas.fillText("BLOCKS:", 10, 450);
+		canvas.font = "20px Helvetica";
+		canvas.fillText("0: Girder (general building block)", 10, 450+45*(0+1));
+		canvas.fillText("1: Truss (can be shot through)", 10, 450+45*(1+1));
+		canvas.fillText("2: Forcefield (high HP but can be moved through)", 10, 450+45*(2+1));
+		canvas.fillText("3: Charger (this allows you to move!)", 10, 450+45*(3+1));
+		canvas.fillText("4: Machine Gun (shoots enemies for you)", 10, 450+45*(4+1));
+		canvas.fillText("5: Turret (powerful shooter, can't be shot through)", 10, 450+45*(5+1));
+		canvas.fillText("6: Electronic Arrowslit (only you can shoot through it)", 10, 450+45*(6+1));
+		canvas.fillText("7: Medical Beacon(heals you in range)", 10, 450+45*(7+1));
+		canvas.fillText("8: Flamer (powerful 4-directional shot)", 10, 450+45*(8+1));
+		canvas.fillText("9: Arsenal (NOT YET IMPLEMENTED)", 10, 450+45*(9+1));
+
+		
+	}
+        if (menuState == 2)
+	{
+		
+		var Px = 0
+		var Py = 0
+		playerpos = getPosFromRail(0);
+		canvas.fillStyle = "#914444"; //height based gradient, surface
+		//surface
+		if (playerpos[1] > 4000)
+		{
+			canvas.fillStyle = "#85622d"; //above surface 
+		}
+		if (playerpos[1] > 8000)
+		{
+			canvas.fillStyle = "#db937f"; //sky
+		}
+		if (playerpos[1] > 12000 && playerpos[1] <= 16000)
+		{
+			canvas.fillStyle = "#8f9ea8"; //cloud layer
+			while (Math.random() < cloudchance / clouds.length)
+			{
+				var Length = (200 + Math.random() * 200) * 4
+				var Height = (150 + Math.random() * 150) * 4
+				clouds.push([0-Length,Math.random()*(900+2*Height)-Height,Length,Height,playerpos[0],playerpos[1]])
+			}
+		}
+		if (playerpos[1] > 16000 && playerpos[1] <= 20000)
+		{
+			canvas.fillStyle = "#d4cce0"; //upper sky
+			while (Math.random() < cloudchance / clouds.length)
+			{
+				var Length = (100 + Math.random() * 200) * 4
+				var Height = (40 + Math.random() * 20) * 4
+				clouds.push([0-Length,Math.random()*(900+2*Height)-Height,Length,Height,playerpos[0],playerpos[1]])
+			}
+		}
+		if (playerpos[1] > 20000)
+		{
+			canvas.fillStyle = "#7c5ab0"; //lower space
+		}
+		if (playerpos[1] > 24000)
+		{
+			canvas.fillStyle = "#3b304d"; //edge of space
+		}
+		if (playerpos[1] > 28000)
+		{
+			canvas.fillStyle = "#2D3A85"; //space
+		}
+        	canvas.fillRect(0, 0, screen.width, screen.height);
+		var delclouds = [];
+		for (var P = 0; P < clouds.length; P++)
+		{
+			canvas.fillStyle = "#afbec866";
+			canvas.fillRect(clouds[P][0] + clouds[P][4] - playerpos[0], clouds[P][1] - clouds[P][5] + playerpos[1], clouds[P][2], clouds[P][3]);
+			clouds[P][0] = clouds[P][0] + 1;
+			if (clouds[P][0] > (1600 + clouds[P][4] - playerpos[0]))
+			{
+				delclouds.push(P);	
+			}
+		}
+		for (var P = 0; P < delclouds.length; P++)
+		{
+			clouds.splice(delclouds[P],1);
+		}
+		//if (playerpos[1] > 12000 && playerpos[1] <= 16000)
+		//{
+		//	canvas.fillStyle = "#8f9ea8"; //cloud layer
+		//}
+		//else
+		//{
+		//	clouds = []
+		//}
+		for (var i = 0; i < Rails.length; i++)
+		{
+			canvas.beginPath();
+			canvas.moveTo(800 + Rails[i][2] - playerpos[0],450 -  Rails[i][3] + playerpos[1])
+			canvas.lineWidth = "10";
+			x = Px
+			y = Py
+			canvas.strokeStyle = "#50515C";
+			if (Players[0].railOn == i)
+			{
+				canvas.strokeStyle = "#000000";
+			}
+			
+			Px = Rails[i][2] + Rails[i][1] * Math.cos(Rails[i][0]);
+			Py = Math.abs(Rails[i][3] + Rails[i][1] * Math.sin(Rails[i][0]));
+			canvas.setLineDash([5, 5]);
+			canvas.lineTo(Math.round(800+Px-playerpos[0]), Math.round(450-Py+playerpos[1]));	
+			canvas.stroke();			
+
+		}
+		canvas.setLineDash([5, 5]);
+		canvas.beginPath();
+		canvas.strokeStyle = "#EDDCA4";
+		canvas.rect(800-playerpos[0]+(Players[0].targetposX)*100, 450-(Players[0].targetposY)*100+playerpos[1], 100, 100)
+		canvas.stroke();
+		canvas.beginPath(); //ROBOT ARM THING TIME
+		canvas.strokeStyle = "#555555";
+		canvas.setLineDash([10, 5]);
+		canvas.moveTo(800+(Players[0].targetposX)*100+50-playerpos[0], 450-(Players[0].targetposY)*100+playerpos[1]+50)
+		canvas.lineTo(800+(Players[0].targetposX)*50+25-playerpos[0]/2, 450-(Players[0].targetposY)*50+playerpos[1]/2-100)
+		canvas.lineTo(800, 450)
+		canvas.stroke();
+		if (Players[0].weapon == 1)
+		{
+			canvas.fillStyle = "#FFFF44"
+		}
+		if (Players[0].weapon == 2)
+		{
+			canvas.fillStyle = "#dd5555"
+		}
+		if (Players[0].weapon == 3)
+		{
+			canvas.fillStyle = "#C9DDFD"
+		}
+		if (Players[0].weapon == 4)
+		{
+			canvas.fillStyle = "#771bb5"
+		}
+		if (Players[0].weapon == 5)
+		{
+			canvas.fillStyle = "#302520"
+		}
+		//canvas.fillStyle = "#000000";
+		var mouseang = angle(800, 450, cursorX, cursorY)
+		rotrect(775,425,50,mouseang);
+		canvas.fillStyle = "#442200";
+		canvas.fillRect(-playerpos[0],690 + playerpos[1],1600,210)
+		canvas.fillStyle = "#118800";
+		canvas.fillRect(1400,15,190 * Players[0].hp / Players[0].maxhp,50);
+		
+		for (var j = 0; j < Projectiles.length; j++)
+		{
+			//console.log("Projectile time");
+			canvas.fillStyle = Projectiles[j][9]
+			canvas.fillRect(797+Projectiles[j][0]-playerpos[0],453-Projectiles[j][1]+playerpos[1],Projectiles[j][8]*2 + 3,Projectiles[j][8]*2 + 3)
+		}
+		for (var k = 0; k < World.length; k++)
+		{
+			if (World[k][2] == 0)
+			{
+				canvas.fillStyle = "#9c3b36ff";
+			}
+			if (World[k][2] == 1)
+			{
+				canvas.fillStyle = "#32bfb344";
+			}
+			if (World[k][2] == 2)
+			{
+				canvas.fillStyle = "#f0bf5dff";
+			}
+			if (World[k][2] == 3)
+			{
+				canvas.fillStyle = "#cccccc";
+			}
+			if (World[k][2] == 4)
+			{
+				canvas.fillStyle = "#444444";
+			}
+			if (World[k][2] == 5)
+			{
+				canvas.fillStyle = "#353535";
+			}
+			if (World[k][2] == 6)
+			{
+				canvas.fillStyle = "#557711";
+			}
+			if (World[k][2] == 7)
+			{
+				canvas.fillStyle = "#55cc55";
+			}
+			if (World[k][2] == 8)
+			{
+				canvas.fillStyle = "#c68222";
+			}
+			if (World[k][2] != 4)
+			{
+				canvas.fillRect(800+World[k][0]*100-playerpos[0],450-World[k][1]*100+playerpos[1],100,100)
+			}
+			else
+			{
+				canvas.fillRect(825+World[k][0]*100-playerpos[0],475-World[k][1]*100+playerpos[1],50,50)
+			}
+			if (World[k][0] == Players[0].targetposX)
+			{
+				if (World[k][1] == Players[0].targetposY)
+				{
+					if (World[k][2] == 0)
+					{
+						canvas.fillStyle = "#000000";
+					}
+					else
+					{
+						canvas.fillStyle = "#885500";
+					}
+					canvas.fillText(World[k][3], 835-playerpos[0]+(Players[0].targetposX)*100, 505-(Players[0].targetposY)*100+playerpos[1])
+				}
+			}
+		}
+		canvas.font = "20px Helvetica";
+		canvas.fillStyle = "#442200";
+		canvas.fillText("HP:" + Players[0].hp, 1300, 60)
+		canvas.fillStyle = "#ffffff";
+		canvas.fillText("$" + money, 1400, 100)
+		for (var e = 0; e < Enemies.length; e++)
+		{
+			if (Enemies[e].type == 0)
+			{
+				canvas.fillStyle = Enemies[e].col
+				canvas.fillRect(Enemies[e].x - playerpos[0]+800,Enemies[e].y + playerpos[1]+450,Enemies[e].hbX,Enemies[e].hbY)
+			}
+			if (Enemies[e].type == 1)
+			{
+				canvas.fillStyle = Enemies[e].col
+				canvas.fillRect(Enemies[e].x - playerpos[0]+800,Enemies[e].y + playerpos[1]+450,Enemies[e].hbX,Enemies[e].hbY)
+			}
+		}
+	}
+	if (menuState == 5)
+	{
+		canvas.fillStyle = "#50515c";
+        	canvas.fillRect(0, 0, screen.width, screen.height);
+		canvas.font = "40px Helvetica";
+		if (Math.random() < 0.9)
+		{
+				canvas.fillStyle = "#FCF8EB";
+		}
+		else
+		{
+			canvas.fillStyle = "#EDDCA4";
+		}
+		canvas.fillText("You died!", 100, 100)
+		canvas.font = "20px Helvetica";
+		if (Math.random() < 0.9)
+		{
+				canvas.fillStyle = "#FCF8EB";
+		}
+		else
+		{
+			canvas.fillStyle = "#EDDCA4";
+		}
+		canvas.fillText("Refresh the page to begin a new game.", 100, 200);
+
+
+		
+	}
+    }
+
+
+
+
+</script>

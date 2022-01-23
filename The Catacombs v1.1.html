@@ -1,0 +1,869 @@
+<canvas id="screen" width="1" height="200"/>
+
+
+<script>
+var screen = document.getElementById('screen');
+var canvas = screen.getContext('2d');
+var fps = 200
+setInterval(Main, 1000/fps);
+canvas.fillStyle = "#000000"
+var StripNumber = 0
+var dying = false
+var Rules = [] //rules go one by one
+var StripPixels = []
+var RowWidth = 300
+var visitedSpotsX = []
+var visitedSpotsY = []
+var tracePath = true
+var InvertColors = true
+var MaxTrails = 2500
+var scale = 2
+var hp = 6
+var Monsters = []
+var Treasures = []
+var Powerups = []
+var Score = 0
+screen.width = RowWidth*scale+100
+screen.height = 2000*scale
+var HoldPause = false
+
+var displayCursor = true
+var cursorX = Math.round(Math.random() * RowWidth)
+var cursorY = Math.round(Math.random() * screen.height/scale)
+var prevX = cursorX
+var prevY = 0
+var GoUp = false
+var GoDown = false
+var GoLeft = false
+var GoRight = false
+var prevEnabled = false
+var mazeMode = true
+var mazeCol = true
+var cursorMoveFrames = 30
+var cursorFrame = 0
+var snapToCursor = false
+var destroyThisThingy = 3
+
+
+var viewdist = 7 //noramlly 7
+
+for (var i = 0; i < 200; i++)
+{
+	Treasures.push({
+		x: Math.round(Math.random() * RowWidth),
+		y: Math.round(Math.random() * screen.height/scale), 
+		type: "Treasure"
+	})
+}
+for (var i = 0; i < 40; i++)
+{
+	Treasures.push({
+		x: Math.round(Math.random() * RowWidth),
+		y: Math.round(Math.random() * screen.height/scale), 
+		type: "HealthUp"
+	})
+}
+for (var i = 0; i < 25; i++)
+{
+	Treasures.push({
+		x: Math.round(Math.random() * RowWidth),
+		y: Math.round(Math.random() * screen.height/scale), 
+		type: "SpeedUp"
+	})
+}
+for (var i = 0; i < 33; i++)
+{
+	Treasures.push({
+		x: Math.round(Math.random() * RowWidth),
+		y: Math.round(Math.random() * screen.height/scale), 
+		type: "SightUp"
+	})
+}
+
+
+function SpawnPossessor()
+{
+	Monsters.push({
+	x: Math.round(Math.random() * RowWidth),
+	y: Math.round(Math.random() * screen.height/scale),
+	frames: 0,
+	color: "#228816ff",
+	dmg: 1,
+	data: [],
+	behavior: function Behave(monster)
+	{
+		var dx = cursorX - monster.x
+		var dy = cursorY - monster.y
+		if (monster.frames >= 800)
+		{
+			var HorizPref = 0.5
+			if (dx < 0)
+			{
+				HorizPref = 0.9
+			}
+			if (dx > 0)
+			{
+				HorizPref = 0.1
+			}
+			var VertPref = 0.5
+			if (dy < 0)
+			{
+				VertPref = 0.9
+			}
+			if (dy > 0)
+			{
+				VertPref = 0.1
+			}
+			if (Math.random() > HorizPref) //go right! Add!
+			{
+				monster.x = monster.x + 1
+			}
+			else if (Math.random() < HorizPref) //go left! Subtract!
+			{
+				monster.x = monster.x - 1
+			}
+			if (Math.random() > VertPref)
+			{
+				monster.y = monster.y + 1
+			}
+			else if (Math.random() < VertPref)
+			{
+				monster.y = monster.y - 1
+			}
+			monster.frames = 0
+		}
+	}
+})
+}
+for (var i = 0; i < 20; i++)
+{
+	SpawnPossessor()
+}
+
+function SpawnWorm()
+{
+Monsters.push({
+	x: Math.round(Math.random() * RowWidth),
+	y: Math.round(Math.random() * screen.height/scale),
+	frames: 0,
+	color: "#ff00ff",
+	dmg: 1,
+	data: [0.5],
+	behavior: function Behave(monster)
+	{
+		var dx = cursorX - monster.x
+		var dy = cursorY - monster.y
+		if (monster.frames >= 15)
+		{
+			var HorizPref = 0.5
+			if (dx < 0)
+			{
+				HorizPref = 0.6 + monster.data[0] * 0.4
+			}
+			if (dx > 0)
+			{
+				HorizPref = 0.4 - monster.data[0] * 0.4
+			}
+			var VertPref = 0.5
+			if (dy < 0)
+			{
+				VertPref = 0.6 + monster.data[0] * 0.4
+			}
+			if (dy > 0)
+			{
+				VertPref = 0.4 - monster.data[0] * 0.4
+			}
+			if (Math.random() > HorizPref) //go right! Add!
+			{
+				if (StripPixels[monster.y][monster.x+1] == mazeCol && Math.random() > 0.2)
+				{
+					monster.x = monster.x + 1
+					monster.data[0] = Math.pow(monster.data[0],0.95)
+				}
+				else
+				{
+					monster.data[0] = Math.pow(monster.data[0],1/0.95)
+				}
+			}
+			else if (Math.random() < HorizPref) //go left! Subtract!
+			{
+				if (StripPixels[monster.y][monster.x-1] == mazeCol && Math.random() > 0.2)
+				{
+					monster.x = monster.x - 1
+					monster.data[0] = Math.pow(monster.data[0],0.95)
+				}
+				else
+				{
+					monster.data[0] = Math.pow(monster.data[0],1/0.95)
+				}
+			}
+			if (Math.random() > VertPref)
+			{
+				if (StripPixels[monster.y+1][monster.x] == mazeCol && Math.random() > 0.2)
+				{
+					monster.y = monster.y + 1
+					monster.data[0] = Math.pow(monster.data[0],0.95)
+				}
+				else
+				{
+					monster.data[0] = Math.pow(monster.data[0],1/0.95)
+				}
+			}
+			else if (Math.random() < VertPref)
+			{
+				if (StripPixels[monster.y-1][monster.x] == mazeCol && Math.random() > 0.2)
+				{
+					monster.y = monster.y - 1
+					monster.data[0] = Math.pow(monster.data[0],0.95)
+				}
+				else
+				{
+					monster.data[0] = Math.pow(monster.data[0],1/0.95)
+				}
+			}
+			monster.frames = 0
+		}
+	}
+})
+}
+
+
+function Has(x,y)
+{
+	return
+}
+
+
+
+
+
+
+
+document.addEventListener("keydown", function (event) {
+	if (event.keyCode == 87)
+	{
+		GoUp = true
+	}
+	if (event.keyCode == 83)
+	{
+		GoDown = true
+	}
+	if (event.keyCode == 65)
+	{
+		GoLeft = true
+	}
+	if (event.keyCode == 68)
+	{
+		GoRight = true
+	}
+});
+document.addEventListener("keyup", function (event) {
+	if (event.keyCode == 80)
+	{
+		Paused = !Paused
+	}
+	if (event.keyCode == 87)
+	{
+		GoUp = false
+	}
+	if (event.keyCode == 83)
+	{
+		GoDown = false
+	}
+	if (event.keyCode == 65)
+	{
+		GoLeft = false
+	}
+	if (event.keyCode == 68)
+	{
+		GoRight = false
+	}
+});
+
+var PauseReady = true
+var Paused = false
+if (HoldPause == true && !PauseReady)
+{
+	PauseReady = false
+	Paused = !Paused
+}
+if (HoldPause == false)
+{
+	PauseReady = true
+}
+
+
+
+Rules.push({
+	Tags: [], //E.g. "FalseAboveTop"
+	CellData: [[-1,false,0],[0,false,0],[1,true,0]],
+	Out: true,
+	Logic: "OVERWRITE" //doesn't do anything with inputs, only determines how output acts.
+})
+Rules.push({
+	Tags: [], //E.g. "FalseAboveTop"
+	CellData: [[-1,true,0],[0,false,0],[1,false,0]],
+	Out: true,
+	Logic: "OR" //doesn't do anything with inputs, only determines how output acts.
+})
+Rules.push({
+	Tags: [], //E.g. "FalseAboveTop"
+	CellData: [[-1,false,1],[0,false,1],[1,true,1]],
+	Out: true,
+	Logic: "OR" //doesn't do anything with inputs, only determines how output acts.
+})
+Rules.push({
+	Tags: [], //E.g. "FalseAboveTop"
+	CellData: [[-1,true,1],[0,false,1],[1,false,1]],
+	Out: true,
+	Logic: "OR" //doesn't do anything with inputs, only determines how output acts.
+})
+Rules.push({
+	Tags: [], //E.g. "FalseAboveTop"
+	CellData: [[-1,false,3],[0,true,2],[1,false,3]],
+	Out: false,
+	Logic: "XOR" //doesn't do anything with inputs, only determines how output acts.
+})
+Rules.push({
+	Tags: [], //E.g. "FalseAboveTop"
+	CellData: [[-1,false,1],[0,true,1],[1,false,1]],
+	Out: false,
+	Logic: "EQUALS" //doesn't do anything with inputs, only determines how output acts.
+})
+Rules.push({
+	Tags: [], //E.g. "FalseAboveTop"
+	CellData: [[-1,false,1],[0,true,1],[1,false,1]],
+	Out: false,
+	Logic: "EQUALS" //doesn't do anything with inputs, only determines how output acts.
+})
+Rules.push({
+	Tags: [], //E.g. "FalseAboveTop"
+	CellData: [[-1,false,2],[1,false,2]],
+	Out: false,
+	Logic: "EQUALS" //doesn't do anything with inputs, only determines how output acts.
+})
+Rules.push({
+	Tags: [], //E.g. "FalseAboveTop"
+	CellData: [[-1,false,0],[1,false,0]],
+	Out: false,
+	Logic: "XOR" //doesn't do anything with inputs, only determines how output acts.
+})
+Rules.push({
+	Tags: [], //E.g. "FalseAboveTop"
+	CellData: [[0,true,4],[1,false,2],[-1,false,2]],
+	Out: true,
+	Logic: "XOR" //doesn't do anything with inputs, only determines how output acts.
+})
+Rules.push({
+	Tags: [], //E.g. "FalseAboveTop"
+	CellData: [[0,true,0],[2,false,0],[-2,false,0]],
+	Out: true,
+	Logic: "OR" //doesn't do anything with inputs, only determines how output acts.
+})
+Rules.push({
+	Tags: [], //E.g. "FalseAboveTop"
+	CellData: [[0,true,0],[1,false,0],[-1,false,0]],
+	Out: true,
+	Logic: "OR" //doesn't do anything with inputs, only determines how output acts.
+})
+
+
+
+
+
+var x = []
+for (var i = 0; i <= RowWidth; i++)
+{
+	//var m = 
+	x.push((Math.round(Math.random()) == 1) ? true : false)
+}
+StripPixels.push(x)
+
+
+function Main() {
+
+if (!Paused)
+{
+
+
+
+
+
+if (StripNumber < screen.height/scale && StripNumber < cursorY + viewdist + 5)
+{
+	var newstrip = []
+	for (var i = 0; i < StripPixels[StripNumber].length; i++)
+	{
+		var dx = Math.abs(cursorX - i)
+		if (dx > RowWidth / 2)
+		{
+			dx = RowWidth - dx
+		}
+		var dy = cursorY - StripNumber 
+		var dist = Math.round(Math.sqrt(dx*dx+dy*dy))
+		if (dist <= viewdist)
+		{
+			if (StripPixels[StripNumber][i] == !InvertColors)
+			{
+				canvas.fillStyle = "#000000"
+				canvas.fillRect(i*scale,StripNumber*scale,1*scale,1*scale)
+			}
+			else
+			{
+				canvas.fillStyle = "#ffffff"
+				canvas.fillRect(i*scale,StripNumber*scale,1*scale,1*scale)
+			}
+		}
+		else
+		{
+			canvas.fillStyle = "#000000"
+			canvas.fillRect(i*scale,StripNumber*scale,1*scale,1*scale)
+		}
+		var OUTPUT = false
+		for (var R = 0; R < Rules.length; R++)
+		{
+			var ruleAccept = true
+			for (var P = 0; P < Rules[R].CellData.length; P++)
+			{
+				var PAP = (RowWidth + i + Rules[R].CellData[P][0]) % RowWidth //pixel at position
+				var PAR = (StripNumber - ((Rules[R].CellData[P][2] != null) ? Rules[R].CellData[P][2] : 0))
+				if (!Rules[R].Tags.includes("TrueAboveTop") && !Rules[R].Tags.includes("FalseAboveTop") || PAR >= 0)
+				{
+					PAR = PAR > 0 ? PAR : 0
+					if (StripPixels[PAR][PAP] != Rules[R].CellData[P][1])
+					{
+						ruleAccept = false
+					}
+				}
+				else if (Rules[R].Tags.includes("FalseAboveTop") && PAR < 0)
+				{
+					ruleAccept = false
+				}
+			}
+			if (Rules[R].Logic == "OVERWRITE")
+			{
+				OUTPUT = ruleAccept	
+			}
+			if (Rules[R].Logic == "OR")
+			{
+				if (OUTPUT == false && ruleAccept == false)
+				{
+					OUTPUT = false
+				}
+				else if (OUTPUT == false && ruleAccept == true)
+				{
+					OUTPUT = true
+				}
+				else if (OUTPUT == true && ruleAccept == false)
+				{
+					OUTPUT = true
+				}
+				else if (OUTPUT == true && ruleAccept == true)
+				{
+					OUTPUT = true
+				}
+				
+			}
+			if (Rules[R].Logic == "AND")
+			{
+				if (OUTPUT == false && ruleAccept == false)
+				{
+					OUTPUT = false
+				}
+				else if (OUTPUT == false && ruleAccept == true)
+				{
+					OUTPUT = false
+				}
+				else if (OUTPUT == true && ruleAccept == false)
+				{
+					OUTPUT = false
+				}
+				else if (OUTPUT == true && ruleAccept == true)
+				{
+					OUTPUT = true
+				}
+				
+			}
+			if (Rules[R].Logic == "EQUALS")
+			{
+				if (OUTPUT == ruleAccept)
+				{
+					OUTPUT = true
+				}
+				else if (OUTPUT != ruleAccept)
+				{
+					OUTPUT = false
+					
+				}
+			}
+			if (Rules[R].Logic == "XOR")
+			{
+				if (OUTPUT == ruleAccept)
+				{
+					OUTPUT = false
+				}
+				else if (OUTPUT != ruleAccept)
+				{
+					OUTPUT = true
+				}
+			}
+			if (Rules[R].Out == false)
+			{
+				OUTPUT = !OUTPUT
+			}
+		}
+		newstrip.push(OUTPUT)
+	}
+	StripPixels.push(newstrip)
+	//console.log(newstrip)
+	StripNumber = StripNumber + 1
+
+
+
+
+
+
+
+}//this here ends the if block
+else
+{
+	StripNumber = cursorY - viewdist - 5
+	if (StripNumber < 0)
+	{
+		StripNumber = 0
+	}
+	if (StripNumber > screen.height/scale)
+	{
+		StripNumber = screen.height/scale
+	}
+}
+if (tracePath)
+{
+	canvas.fillStyle = "#888888"
+	for (var i = 0; i < visitedSpotsX.length; i++)
+	{
+		var XPOS = visitedSpotsX[i]
+		var YPOS = visitedSpotsY[i]
+		var dx = Math.abs(cursorX - XPOS)
+		if (dx > RowWidth / 2)
+		{
+			dx = RowWidth - dx
+		}
+		var dy = cursorY - YPOS
+		var dist = Math.round(Math.sqrt(dx*dx+dy*dy))
+		if (dist > viewdist)
+		{
+			canvas.fillRect(XPOS*scale,YPOS*scale,1*scale,1*scale)
+		}
+	}
+	if (visitedSpotsX.length > MaxTrails)
+	{
+		visitedSpotsX.splice(0,1)
+		visitedSpotsY.splice(0,1)
+	}
+}
+
+	if (displayCursor == true)
+	{
+		if (tracePath)
+		{
+			var YPos = visitedSpotsY.indexOf(cursorY)
+			if (typeof YPos !== 'undefined')
+			{
+				var XPos = visitedSpotsX.indexOf(cursorX)
+				if (typeof XPos !== 'undefined')
+				{
+					var found = false
+					for (var i = 0; i < visitedSpotsX.length; i++)
+					{
+						if (visitedSpotsX[i] == cursorX && visitedSpotsY[i] == cursorY)
+						{
+							i = visitedSpotsX.length
+							found = true
+						}
+					}
+					if (!found)
+					{
+						visitedSpotsX.push(cursorX)
+						visitedSpotsY.push(cursorY)
+					}
+				}
+				else
+				{
+					visitedSpotsX.push(cursorX)
+					visitedSpotsY.push(cursorY)
+				}
+			}
+			else
+			{
+				visitedSpotsX.push(cursorX)
+				visitedSpotsY.push(cursorY)
+			}
+		}
+		cursorFrame++;
+		canvas.fillStyle = "#000000"
+		prevY = cursorY
+		prevX = cursorX
+		prevEnabled = StripPixels[cursorY][cursorX]
+		if (snapToCursor)
+		{
+			window.scrollTo(cursorX-RowWidth/4,cursorY-20)
+		}
+		if (cursorMoveFrames <= cursorFrame)
+		{
+			if (GoUp && cursorY > 0)
+			{
+				if (!mazeMode || StripPixels[cursorY-1][cursorX] == mazeCol	)
+				{
+					if (!prevEnabled)
+					{
+						canvas.fillStyle = "#000000"
+						canvas.fillRect(prevX*scale,prevY*scale,1*scale,1*scale)
+					}
+					if (prevEnabled)
+					{
+						canvas.fillStyle = "#ffffff"
+						canvas.fillRect(prevX*scale,prevY*scale,1*scale,1*scale)
+					}
+					cursorY = cursorY - 1
+				}
+			}
+			if (GoDown && cursorY < screen.height/scale-1)
+			{
+				if (!mazeMode || StripPixels[cursorY+1][cursorX] == mazeCol)
+				{
+					if (!prevEnabled)
+					{
+						canvas.fillStyle = "#000000"
+						canvas.fillRect(prevX*scale,prevY*scale,1*scale,1*scale)
+					}
+					if (prevEnabled)
+					{
+						canvas.fillStyle = "#ffffff"
+						canvas.fillRect(prevX*scale,prevY*scale,1*scale,1*scale)
+					}
+					cursorY = cursorY + 1
+				}
+			}
+			if (GoLeft)
+			{
+				if (!mazeMode || StripPixels[cursorY][(cursorX - 1 + (RowWidth+1)) % (RowWidth+1)] == mazeCol)
+				{
+					if (!prevEnabled)
+					{
+						canvas.fillStyle = "#000000"
+						canvas.fillRect(prevX*scale,prevY*scale,1*scale,1*scale)
+					}
+					if (prevEnabled)
+					{
+						canvas.fillStyle = "#ffffff"
+						canvas.fillRect(prevX*scale,prevY*scale,1*scale,1*scale)
+					}
+					cursorX = (cursorX - 1 + (RowWidth+1)) % (RowWidth+1)	
+				}
+			}
+			if (GoRight)
+			{
+				if (!mazeMode || StripPixels[cursorY][(cursorX + 1 + (RowWidth+1)) % (RowWidth+1)] == mazeCol)
+				{
+					if (!prevEnabled)
+					{
+						canvas.fillStyle = "#000000"
+						canvas.fillRect(prevX*scale,prevY*scale,1*scale,1*scale)
+					}
+					if (prevEnabled)
+					{
+						canvas.fillStyle = "#ffffff"
+						canvas.fillRect(prevX*scale,prevY*scale,1*scale,1*scale)
+					}
+					cursorX = (cursorX + 1 + (RowWidth+1)) % (RowWidth+1)
+				}
+			}
+			cursorFrame = 0
+		}
+		if (StripPixels[cursorY][cursorX] == true)
+		{
+			if (hp <= 0)
+			{
+				canvas.fillStyle = "#00000010"
+				cursorMoveFrames = 100000000 //theoretically you can still move lol
+			}
+			if (hp == 1)
+			{
+				canvas.fillStyle = "#88000010"
+				if (dying == false)
+				{
+					dying = true
+					cursorMoveFrames = cursorMoveFrames + 25
+				}
+			}
+			if (hp == 2)
+			{
+				canvas.fillStyle = "#ff000010"
+				if (dying == true)
+				{
+					dying = false
+					cursorMoveFrames = cursorMoveFrames - 25
+				}
+			}
+			if (hp == 3)
+			{
+				canvas.fillStyle = "#ff880030"
+			}
+			if (hp == 4)
+			{
+				canvas.fillStyle = "#ffff00"
+			}
+			if (hp == 5)
+			{
+				canvas.fillStyle = "#ffff00"
+			}
+			if (hp == 6)
+			{
+				canvas.fillStyle = "#88ff00"
+			}
+			if (hp == 7)
+			{
+				canvas.fillStyle = "#00ff00"
+			}
+			if (hp == 8)
+			{
+				canvas.fillStyle = "#00ff88"
+			}
+			if (hp == 9)
+			{
+				canvas.fillStyle = "#00ffff"
+			}
+			if (hp == 10)
+			{
+				canvas.fillStyle = "#0088ff"
+			}
+			if (hp == 11)
+			{
+				canvas.fillStyle = "#0000ff"
+			}
+			if (hp >= 12)
+			{
+				canvas.fillStyle = "#0000ff15"
+			}
+			canvas.fillRect(cursorX*scale,cursorY*scale,1*scale,1*scale)
+		}
+		if (StripPixels[cursorY][cursorX] == false)
+		{
+			canvas.fillStyle = "#77ff7720"
+			canvas.fillRect(cursorX*scale,cursorY*scale,1*scale,1*scale)
+		}
+		canvas.fillStyle = "#000000"
+	}
+
+	for (var i = 0; i < Monsters.length; i++)
+	{
+		var dx = Math.abs(cursorX - Monsters[i].x)
+		if (dx > RowWidth / 2)
+		{
+			dx = RowWidth - dx
+		}
+		var dy = cursorY - Monsters[i].y
+		var dist = Math.round(Math.sqrt(dx*dx+dy*dy))
+		if (dist <= viewdist)
+		{
+			canvas.fillStyle = Monsters[i].color
+			canvas.fillRect(Monsters[i].x*scale,Monsters[i].y*scale,1*scale,1*scale)
+		}
+		eval(Monsters[i].behavior(Monsters[i])) //make SURE you evaluate behavior again before destroying the monster, to ensure that the monster can apply special effects upon hitting the player
+		if (dist <= 0.5)
+		{
+			if (Monsters[i].dmg > 0)
+			{
+				hp = hp - Monsters[i].dmg
+				Monsters.splice(i,1)
+			}
+		}
+		Monsters[i].frames = Monsters[i].frames + 1
+	}
+	for (var i = 0; i < Treasures.length; i++)
+	{
+		var dx = Math.abs(cursorX - Treasures[i].x)
+		if (dx > RowWidth / 2)
+		{
+			dx = RowWidth - dx
+		}
+		var dy = cursorY - Treasures[i].y
+		var dist = Math.round(Math.sqrt(dx*dx+dy*dy))
+		if (StripPixels[Treasures[i].y][Treasures[i].x] == false)
+		{
+			Treasures[i].x = Math.round(Math.random() * RowWidth)
+			Treasures[i].y = Math.round(Math.random() * screen.height/scale)
+		}
+		if (dist <= viewdist)
+		{
+			if (Treasures[i].type == "Treasure")
+			{
+				canvas.fillStyle = "#aaab0010"
+			}
+			if (Treasures[i].type == "SpeedUp")
+			{
+				canvas.fillStyle = "#00ff0010"
+			}
+			if (Treasures[i].type == "HealthUp")
+			{
+				canvas.fillStyle = "#ff888810"
+			}
+			if (Treasures[i].type == "SightUp")
+			{
+				canvas.fillStyle = "#00aaaa10"
+			}
+			canvas.fillRect(Treasures[i].x*scale,Treasures[i].y*scale,1*scale,1*scale)
+			if (dist < 1)
+			{
+				if (Treasures[i].type == "Treasure")
+				{
+					Score = Score + 1
+				}
+				if (Treasures[i].type == "SpeedUp")
+				{
+					cursorMoveFrames = cursorMoveFrames - 1
+				}
+				if (Treasures[i].type == "HealthUp")
+				{
+					hp = hp + 1
+				}
+				if (Treasures[i].type == "SightUp")
+				{
+					viewdist = viewdist + 1
+				}
+				Treasures.splice(i,1)
+			}
+		}
+	}
+	if (Math.random() < 1/(fps * Math.pow(Monsters.length,0.1)) && Monsters.length < 500)
+	{
+		SpawnWorm()
+	}
+
+
+
+
+
+
+
+
+
+}//this bracket is for the pause check
+
+}
+
+
+
+
+
+//examples: 
+
+//[{"Tags":[],"CellData":[[0,false,0],[-1,true,0],[1,true,0]],"Out":true,"Logic":"OR"},{"Tags":[],"CellData":[[0,true,0],[-1,true,0],[1,true,0]],"Out":true,"Logic":"XOR"},{"Tags":[],"CellData":[[1,false,2],[-1,false,2]],"Out":true,"Logic":"OR"},{"Tags":[],"CellData":[[0,true,0],[0,true,1]],"Out":true,"Logic":"EQUALS"},{"Tags":[],"CellData":[[0,true,1],[0,false,2],[0,false,3]],"Out":true,"Logic":"XOR"}]
+
+//[{"Tags":["TrueAboveTop"],"CellData":[[0,true,0]],"Out":true,"Logic":"OR"},{"Tags":["TrueAboveTop"],"CellData":[[-1,false,2],[0,true,1],[0,false,1]],"Out":true,"Logic":"EQUALS"},{"Tags":["TrueAboveTop"],"CellData":[[1,false,0]],"Out":true,"Logic":"XOR"},{"Tags":["TrueAboveTop"],"CellData":[[-1,false,0]],"Out":true,"Logic":"XOR"}]
+
+
+
+
+</script>

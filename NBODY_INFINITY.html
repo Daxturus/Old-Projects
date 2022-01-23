@@ -1,0 +1,1343 @@
+<canvas id="screen" width="1000" height="600"/>
+
+<input type="file" id="files" name="files[]" multiple />
+<output id="list"></output>
+
+
+<script>
+
+
+
+
+
+//todo:
+
+//1. shooting stars (gets you 2500 currency per star when controllable ship touches one)
+//2. weapon changing
+//3. more galaxies
+//4. shop pages (allows more items to be sold in shop)
+//5. more types of starbeams (spring, resource transfer, control transfer)
+
+var screen = document.getElementById('screen');
+var graphics = screen.getContext('2d');
+var particles = [];
+var projectiles = [];
+var shops = []; //standard shop
+var warps = []; //can be built, teleports object and connected objects
+var facilities = []; //special shops
+var beams = []; 
+var fps = 60;
+var Currency = 25000;
+var controlledParticle = 1;
+var screenPosX = 0;
+var screenPosY = 0;
+var shop = false;
+var starbeams = 0;
+var MinimapScale = 100;
+var actiontxt = "";
+var selectedWeapon = 0;
+
+//Create 20 particles with the following properties
+setInterval(update, 1000/fps); //60 frames per second
+shops.push({
+	x: -2500,
+	y: 160,
+	xspeed: 14,
+	yspeed: 25,
+	relativeXSpeed: 0,
+	relativeYSpeed: 0,
+	trail: []
+});
+shops.push({
+	x: 5954,
+	y: 851,
+	xspeed: 11,
+	yspeed: 32,
+	trail: []
+});
+particles.push({
+	name: "Protosol",
+        x: -2500,
+        y: 0,
+	mass: 250,
+	size: 20,
+        xspeed: 1.0,
+        yspeed: 20,
+        xforce: 0,
+        yforce: 0,
+	lines: [],
+	controllable: false,
+	fuel: 0,
+	fueldensity: 0.0001,
+	thrust: 0,
+	color: "#FF6600",
+	light: 6,
+	photongun: 0,
+	arcgun: 0,
+	kineticgun: 0,
+	tractorbeam: 0,
+	solar: 0
+});
+particles.push({
+	name: "Starter Ship",
+        x: -2300,
+        y: 50,
+	mass: 0.1,
+	size: 1,
+        xspeed: -16,
+        yspeed: 22,
+        xforce: 0,
+        yforce: 0,
+	lines: [],
+	controllable: true,
+	fuel: 2000*16,
+	fueldensity: 0.0001/32,
+	thrust: 16,
+	color: "#FFFFFF",
+	light: 1,
+	photongun: 0,
+	arcgun: 0,
+	kineticgun: 0,
+	tractorbeam: 0,
+	solar: 0
+});
+particles.push({
+	name: "Gigus",
+        x: 6500,
+        y: 200,
+	mass: 4500,
+	size: 150,
+        xspeed: -2,
+        yspeed: 0,
+        xforce: 0,
+        yforce: 0,
+	lines: [],
+	controllable: false,
+	fuel: 0,
+	fueldensity: 0.0001,
+	thrust: 0,
+	color: "#88CCFF",
+	light: 20,
+	photongun: 0,
+	arcgun: 0,
+	kineticgun: 0,
+	tractorbeam: 0,
+	solar: 0
+});
+particles.push({
+	name: "Alfari",
+        x: 9500,
+        y: 200,
+	mass: 400,
+	size: 25,
+        xspeed: 0.0,
+        yspeed: -40,
+        xforce: 0,
+        yforce: 0,
+	lines: [],
+	controllable: false,
+	fuel: 0,
+	fueldensity: 0.0001,
+	thrust: 0,
+	color: "#FFCC77",
+	light: 12,
+	photongun: 0,
+	arcgun: 0,
+	kineticgun: 0,
+	tractorbeam: 0,
+	solar: 0
+});
+particles.push({
+	name: "Greenes",
+        x: 9900,
+        y: 400,
+	mass: 100,
+	size: 4,
+        xspeed: 11.0,
+        yspeed: -40,
+        xforce: 0,
+        yforce: 0,
+	lines: [],
+	controllable: false,
+	fuel: 0,
+	fueldensity: 0.0001,
+	thrust: 0,
+	color: "#55AA66",
+	light: 1,
+	photongun: 0,
+	arcgun: 0,
+	kineticgun: 0,
+	tractorbeam: 0,
+	solar: 0
+});
+particles.push({
+	name: "Brackle",
+        x: 9500,
+        y: 300,
+	mass: 40,
+	size: 8,
+        xspeed: 20,
+        yspeed: -40,
+        xforce: 0,
+        yforce: 0,
+	lines: [],
+	controllable: false,
+	fuel: 0,
+	fueldensity: 0.0001,
+	thrust: 0,
+	color: "#BBBBBB",
+	light: 4,
+	photongun: 0,
+	arcgun: 0,
+	kineticgun: 0,
+	tractorbeam: 0,
+	solar: 0
+});
+particles.push({
+	name: "Tymish",
+        x: 9000,
+        y: -12000,
+	mass: 180,
+	size: 16,
+        xspeed: -20,
+        yspeed: -20,
+        xforce: 0,
+        yforce: 0,
+	lines: [],
+	controllable: false,
+	fuel: 0,
+	fueldensity: 0.0001,
+	thrust: 0,
+	color: "#CC8855",
+	light: 5,
+	photongun: 0,
+	arcgun: 0,
+	kineticgun: 0,
+	tractorbeam: 0,
+	solar: 0
+});
+particles.push({
+	name: "Syne",
+        x: 2526565300,
+        y: 51365320000,
+	mass: 2000,
+	size: 110,
+        xspeed: -350,
+        yspeed: -430,
+        xforce: 0,
+        yforce: 0,
+	lines: [],
+	controllable: false,
+	fuel: 0,
+	fueldensity: 0.0001,
+	thrust: 0,
+	color: "#DDDDFF",
+	light: 20,
+	photongun: 0,
+	arcgun: 0,
+	kineticgun: 0,
+	tractorbeam: 0,
+	solar: 0
+});
+particles.push({
+	name: "Syne",
+        x: 2526565300,
+        y: 51365320000,
+	mass: 2000,
+	size: 110,
+        xspeed: -350,
+        yspeed: -430,
+        xforce: 0,
+        yforce: 0,
+	lines: [],
+	controllable: false,
+	fuel: 0,
+	fueldensity: 0.0001,
+	thrust: 0,
+	color: "#DDDDFF",
+	light: 20,
+	photongun: 0,
+	arcgun: 0,
+	kineticgun: 0,
+	tractorbeam: 0,
+	solar: 0
+});
+particles.push({
+	name: "Levin",
+        x: 2526565300-12200,
+        y: 51365320000,
+	mass: 60,
+	size: 40,
+        xspeed: 8,
+        yspeed: 7,
+        xforce: 0,
+        yforce: 0,
+	lines: [],
+	controllable: false,
+	fuel: 0,
+	fueldensity: 0.0001,
+	thrust: 0,
+	color: "#888888",
+	light: 6,
+	photongun: 0,
+	arcgun: 0,
+	kineticgun: 0,
+	tractorbeam: 0,
+	solar: 0
+});
+particles.push({
+	name: "Edge",
+        x: 4000,
+        y: 53195864000,
+	mass: 850000,
+	size: 60,
+        xspeed: 0,
+        yspeed: 0,
+        xforce: 0,
+        yforce: 0,
+	lines: [],
+	controllable: false,
+	fuel: 0,
+	fueldensity: 0.0001,
+	thrust: 0,
+	color: "#444444",
+	light: 30,
+	photongun: 0,
+	arcgun: 0,
+	kineticgun: 0,
+	tractorbeam: 0,
+	solar: 0
+});
+
+var StarBeamFirst = -1;
+
+setInterval(update, 1000/fps); //60 frames per second
+function Load()
+{
+	var first = new XMLHttpRequest();
+	var location = window.location.href;
+	var BSLASH = "\\";
+	while (location.slice(-1) != BSLASH && location.slice(-1) != "/")
+	{
+		location = location.slice(0,location.length-1);
+		//alert("hi "+location.toString());
+	} 
+	location += "NBodySave.txt";
+	const logFileText = async location => {
+    		const response = await fetch(location);
+   		const text = await response.text();
+		const x = text.split("\n");
+		particles = JSON.parse(x[0]);
+		projectiles = JSON.parse(x[1]);
+		beams = JSON.parse(x[2]);
+		shops = JSON.parse(x[3]);
+		Currency = JSON.parse(x[4]);
+		starbeams = JSON.parse(x[5]);
+	}
+   	logFileText(location);
+}
+document.addEventListener("keypress", function(event) {
+    if (event.key == 'Escape')
+    {
+	Load();
+    }
+    if (event.key == '=')
+    {
+	MinimapScale /= 2;
+    }
+    if (event.key == '-')
+    {
+	MinimapScale *= 2;
+    }
+    if (event.key == 'z')
+    {
+	selectedWeapon = (selectedWeapon - 1);
+    }
+    if (event.key == 'c')
+    {
+	selectedWeapon = (selectedWeapon + 1);
+    }
+    while (selectedWeapon >= 4)
+    {
+	selectedWeapon -= 4;
+    }
+    while (selectedWeapon < 0)
+    {
+	selectedWeapon += 4;
+    }
+    if (event.key == ',' && starbeams > 0)
+    {
+	var shortestdist = 4000;
+	for (var j = 0; j < particles.length; ++j)
+	{
+		var dist = Math.sqrt(Math.abs(particles[controlledParticle].x - particles[j].x) ^ 2 + Math.abs(particles[controlledParticle].y - particles[j].y) ^ 2);
+		if (dist < shortestdist && particles[j].controllable)
+		{
+			shortestdist = dist;
+		}
+	}
+	if (shortestdist < 4000)
+	{
+		if (StarBeamFirst == -1)
+		{
+			StarBeamFirst = controlledParticle;
+			actiontxt = "Connecting starbeam to "+particles[controlledParticle].name;
+		}
+		else if (StarBeamFirst == controlledParticle)
+		{
+			StarBeamFirst = -1;
+			actiontxt = "";
+		}
+		else
+		{
+			var dist = Math.sqrt((particles[StarBeamFirst].x - particles[controlledParticle].x) * (particles[StarBeamFirst].x - particles[controlledParticle].x) + (particles[StarBeamFirst].y - particles[controlledParticle].y) * (particles[StarBeamFirst].y - particles[controlledParticle].y));
+			if (dist < particles[controlledParticle].size + particles[StarBeamFirst].size + 500)
+			{
+				starbeams--;
+				beams.push({
+					p1: StarBeamFirst,
+					p2: controlledParticle,
+					distance: dist
+				});
+				actiontxt = "";
+				StarBeamFirst = -1;
+			}
+		}
+	}
+    }
+    if (event.which == 32 && selectedWeapon == 0 && particles[controlledParticle].photongun > 0 && particles[controlledParticle].fuel >= 1 && particles[controlledParticle].controllable)
+    {
+	var totalSpeed = Math.sqrt(particles[controlledParticle].xspeed * particles[controlledParticle].xspeed + particles[controlledParticle].yspeed * particles[controlledParticle].yspeed);
+	if (totalSpeed > 2)
+	{
+	var vectorX = particles[controlledParticle].xspeed / totalSpeed;
+	var vectorY = particles[controlledParticle].yspeed / totalSpeed;
+	var finalX = vectorX * 300 / fps;
+	var finalY = vectorY * 300 / fps;
+	var finalV = Math.sqrt(finalX * finalX + finalY * finalY);
+	var E = 0.5 / finalV * particles[controlledParticle].photongun;
+	particles[controlledParticle].fuel -= Math.ceil(particles[controlledParticle].photongun + (particles[controlledParticle].photongun - Math.sqrt(particles[controlledParticle].photongun)));
+	projectiles.push({
+		color: '#FFFFFF',
+		brightness: 4,
+		length: 5,
+		energy: E,
+		x: particles[controlledParticle].x + vectorX * (particles[controlledParticle].size + 1) * 2 + particles[controlledParticle].xspeed / fps * 2,
+		y: particles[controlledParticle].y  + vectorX * (particles[controlledParticle].size + 1) * 2 + particles[controlledParticle].yspeed / fps * 2,
+		xspeed: finalX,
+		yspeed: finalY,
+		xspeedF: particles[controlledParticle].xspeed / fps,  //these dont affect length
+		yspeedF: particles[controlledParticle].yspeed / fps,
+		owner: controlledParticle,
+		worth: 0
+	});
+		particles[controlledParticle].xspeed -= 0.5 * (finalX * Math.sqrt(E)) / (2 * particles[controlledParticle].mass);
+		particles[controlledParticle].yspeed -= 0.5 * (finalY * Math.sqrt(E)) / (2 * particles[controlledParticle].mass);
+	}
+    }
+    else if (event.which == 32 && selectedWeapon == 1 && particles[controlledParticle].arcgun > 0 && particles[controlledParticle].fuel >= 1 && particles[controlledParticle].controllable)
+    {
+	var totalSpeed = Math.sqrt(particles[controlledParticle].xspeed * particles[controlledParticle].xspeed + particles[controlledParticle].yspeed * particles[controlledParticle].yspeed);
+	if (totalSpeed > 2)
+	{
+	var vectorX = particles[controlledParticle].xspeed / totalSpeed;
+	var vectorY = particles[controlledParticle].yspeed / totalSpeed;
+	var finalX = vectorX * 200 / fps;
+	var finalY = vectorY * 200 / fps;
+	var finalV = Math.sqrt(finalX * finalX + finalY * finalY);	var E = 0.5 / finalV * particles[controlledParticle].arcgun;
+	particles[controlledParticle].fuel -= Math.ceil(particles[controlledParticle].arcgun * 2);
+	projectiles.push({
+		color: '#FFDDCC',
+		brightness: 7,
+		length: 3,
+		energy: E,
+		x: particles[controlledParticle].x + vectorX * (particles[controlledParticle].size + 1) * 2 + particles[controlledParticle].xspeed / fps * 2,
+		y: particles[controlledParticle].y  + vectorX * (particles[controlledParticle].size + 1) * 2 + particles[controlledParticle].yspeed / fps * 2,
+		xspeed: finalX,
+		yspeed: finalY,
+		xspeedF: particles[controlledParticle].xspeed / fps,  //these dont affect length
+		yspeedF: particles[controlledParticle].yspeed / fps,
+		owner: controlledParticle,
+		worth: 0
+	});
+		//no recoil on Arcgun
+		//particles[controlledParticle].xspeed -= (finalX * Math.ceil(Math.sqrt(E))) / (2 * particles[controlledParticle].mass);
+		//particles[controlledParticle].yspeed -= (finalY .tractorbeam Math.ceil(Math.sqrt(E))) / (2 * particles[controlledParticle].mass);
+	}
+    }
+    else if (event.which == 32 && selectedWeapon == 2 && particles[controlledParticle].kineticgun > 0 && particles[controlledParticle].fuel >= 1 && particles[controlledParticle].controllable)
+    {
+	var totalSpeed = Math.sqrt(particles[controlledParticle].xspeed * particles[controlledParticle].xspeed + particles[controlledParticle].yspeed * particles[controlledParticle].yspeed);
+	if (totalSpeed > 2)
+	{
+	var vectorX = particles[controlledParticle].xspeed / totalSpeed;
+	var vectorY = particles[controlledParticle].yspeed / totalSpeed;
+	var finalX = vectorX * 200 / fps;
+	var finalY = vectorY * 200 / fps;
+	var finalV = Math.sqrt(finalX * finalX + finalY * finalY);
+	var E = 0.5 / finalV * particles[controlledParticle].kineticgun;
+	particles[controlledParticle].fuel -= Math.ceil(particles[controlledParticle].kineticgun);
+	projectiles.push({
+		color: '#CC9944',
+		brightness: 3,
+		length: 7,
+		energy: E,
+		x: particles[controlledParticle].x + vectorX * (particles[controlledParticle].size + 1) * 2 + particles[controlledParticle].xspeed / fps * 2,
+		y: particles[controlledParticle].y  + vectorX * (particles[controlledParticle].size + 1) * 2 + particles[controlledParticle].yspeed / fps * 2,
+		xspeed: finalX,
+		yspeed: finalY,
+		xspeedF: particles[controlledParticle].xspeed / fps,  //these dont affect length
+		yspeedF: particles[controlledParticle].yspeed / fps,
+		owner: controlledParticle,
+		worth: 0
+	});
+		particles[controlledParticle].xspeed -= 1.5 * (finalX * E) / (2 * particles[controlledParticle].mass);
+		particles[controlledParticle].yspeed -= 1.5 * (finalY * E) / (2 * particles[controlledParticle].mass);
+	}
+    }
+    if (event.which == 32 && selectedWeapon == 3 && particles[controlledParticle].tractorbeam > 0 && particles[controlledParticle].fuel >= 1 && particles[controlledParticle].controllable)
+    {
+	var totalSpeed = Math.sqrt(particles[controlledParticle].xspeed * particles[controlledParticle].xspeed + particles[controlledParticle].yspeed * particles[controlledParticle].yspeed);
+	if (totalSpeed > 2)
+	{
+	var vectorX = particles[controlledParticle].xspeed / totalSpeed;
+	var vectorY = particles[controlledParticle].yspeed / totalSpeed;
+	var finalX = vectorX * 50 / fps;
+	var finalY = vectorY * 50 / fps;
+	var finalV = Math.sqrt(finalX * finalX + finalY * finalY);
+	var E = 0.25 / finalV * particles[controlledParticle].tractorbeam;
+	particles[controlledParticle].fuel -= Math.ceil(particles[controlledParticle].tractorbeam + (particles[controlledParticle].tractorbeam - Math.sqrt(particles[controlledParticle].tractorbeam)));
+	projectiles.push({
+		color: '#CC55BB',
+		brightness: 6,
+		length: 14,
+		energy: -E,
+		x: particles[controlledParticle].x + vectorX * (particles[controlledParticle].size + 1) * 2 + particles[controlledParticle].xspeed / fps * 2,
+		y: particles[controlledParticle].y  + vectorX * (particles[controlledParticle].size + 1) * 2 + particles[controlledParticle].yspeed / fps * 2,
+		xspeed: finalX,
+		yspeed: finalY,
+		xspeedF: particles[controlledParticle].xspeed / fps,  //these dont affect length
+		yspeedF: particles[controlledParticle].yspeed / fps,
+		owner: controlledParticle,
+		worth: 0
+	});
+		particles[controlledParticle].xspeed += (finalX * Math.ceil(Math.sqrt(E))) / (2 * particles[controlledParticle].mass);
+		particles[controlledParticle].yspeed += (finalY * Math.ceil(Math.sqrt(E))) / (2 * particles[controlledParticle].mass);
+	}
+    }
+    if (event.key == 'e')
+    {
+	controlledParticle = controlledParticle + 1;
+    }
+    if (event.key == 'q')
+    {
+	controlledParticle = controlledParticle - 1;
+    }
+    if (controlledParticle < 0)
+    {
+	 controlledParticle = particles.length - 1;
+    }
+    controlledParticle = controlledParticle % particles.length;
+    if (particles[controlledParticle].controllable)
+    {	if (event.key == 'w' && particles[controlledParticle].fuel > 0) {
+       		 particles[controlledParticle].yspeed -= particles[controlledParticle].thrust * 0.1 / (particles[controlledParticle].mass + particles[controlledParticle].fuel * particles[controlledParticle].fueldensity);
+		 particles[controlledParticle].fuel -= 1 * particles[controlledParticle].thrust;
+   	}
+	if (event.key == 's' && particles[controlledParticle].fuel > 0) {
+       		 particles[controlledParticle].yspeed += particles[controlledParticle].thrust * 0.1 / (particles[controlledParticle].mass + particles[controlledParticle].fuel * particles[controlledParticle].fueldensity);
+		 particles[controlledParticle].fuel -= 1 * particles[controlledParticle].thrust;
+   	}
+	if (event.key == 'd' && particles[controlledParticle].fuel > 0) {
+       		 particles[controlledParticle].xspeed += particles[controlledParticle].thrust * 0.1 / (particles[controlledParticle].mass + particles[controlledParticle].fuel * particles[controlledParticle].fueldensity);
+		 particles[controlledParticle].fuel -= 1 * particles[controlledParticle].thrust;
+   	}
+	if (event.key == 'a' && particles[controlledParticle].fuel > 0) {
+       		 particles[controlledParticle].xspeed -= particles[controlledParticle].thrust * 0.1 / (particles[controlledParticle].mass + particles[controlledParticle].fuel * particles[controlledParticle].fueldensity);
+		 particles[controlledParticle].fuel -= 1 * particles[controlledParticle].thrust;
+   	}
+	if (event.key == 'W' && particles[controlledParticle].fuel > 0) {
+       		 particles[controlledParticle].yspeed -= particles[controlledParticle].thrust * 0.05 / (particles[controlledParticle].mass + particles[controlledParticle].fuel * particles[controlledParticle].fueldensity);
+		 particles[controlledParticle].fuel -= 0.5 * particles[controlledParticle].thrust;
+   	}
+	if (event.key == 'S' && particles[controlledParticle].fuel > 0) {
+       		 particles[controlledParticle].yspeed += particles[controlledParticle].thrust * 0.05 / (particles[controlledParticle].mass + particles[controlledParticle].fuel * particles[controlledParticle].fueldensity);
+		 particles[controlledParticle].fuel -= 0.5 * particles[controlledParticle].thrust;
+   	}
+	if (event.key == 'D' && particles[controlledParticle].fuel > 0) {
+       		 particles[controlledParticle].xspeed += particles[controlledParticle].thrust * 0.05 / (particles[controlledParticle].mass + particles[controlledParticle].fuel * particles[controlledParticle].fueldensity);
+		 particles[controlledParticle].fuel -= 0.5 * particles[controlledParticle].thrust;
+   	}
+	if (event.key == 'A' && particles[controlledParticle].fuel > 0) {
+       		 particles[controlledParticle].xspeed -= particles[controlledParticle].thrust * 0.05 / (particles[controlledParticle].mass + particles[controlledParticle].fuel * particles[controlledParticle].fueldensity);
+		 particles[controlledParticle].fuel -= 0.5 * particles[controlledParticle].thrust;
+   	}
+	if (particles[controlledParticle].fuel < 0)
+	{
+		particles[controlledParticle].fuel = 0;
+	}
+    }
+    if (shop)
+    {
+	if (event.key == '1' && Currency >= 5000)
+	{
+		particles[controlledParticle].fuel += 3024;
+		Currency -= 5000;
+	}
+	if (event.key == '2' && Currency >= 15000)
+	{
+		starbeams += 1;
+		Currency -= 15000;
+	}
+	if (event.key == '3' && Currency >= 10000)
+	{
+		Currency -= 10000;
+		var count = 1;
+		for (var i = 0; i < particles.length; i++)
+		{
+			if (particles[i].controllable)
+			{
+				count++;
+			}
+		}
+		var out = ("Ship #"+count);
+		particles.push({
+			name: out,
+        		x: particles[controlledParticle].x,
+        		y: particles[controlledParticle].y - 20,
+			mass: 0.1,
+			size: 1,
+        		xspeed: particles[controlledParticle].xspeed,
+        		yspeed: particles[controlledParticle].yspeed,
+        		xforce: 0,
+        		yforce: 0,
+			lines: [],
+			controllable: true,
+			fuel: 16000,
+			fueldensity: 0.0001/32,
+			thrust: 32,
+			color: "#FFFFFF",
+			light: 1
+		});
+	}
+	if (event.key == '4' && Currency >= 5000)
+	{
+		Currency -= 5000;
+		particles[controlledParticle].photongun += 1;
+	}
+	if (event.key == '5' && Currency >= 5000)
+	{
+		Currency -= 5000;
+		particles[controlledParticle].arcgun += 1;
+	}
+	if (event.key == '6' && Currency >= 5000)
+	{
+		Currency -= 5000;
+		particles[controlledParticle].kineticgun += 1;
+	}
+	if (event.key == '7' && Currency >= 5000)
+	{
+		Currency -= 5000;
+		particles[controlledParticle].tractorbeam += 1;
+	}
+	if (event.key == '8' && Currency >= 5000)
+	{
+		Currency -= 5000;
+		particles[controlledParticle].solar += 1;
+	}
+	if (event.key == 'Backspace')
+	{
+		Save();
+	}
+    }
+});
+function Save() {
+
+	var particlesOut = JSON.stringify(particles);
+	var projectilesOut = JSON.stringify(projectiles);
+	var beamsOut = JSON.stringify(beams);
+	var shopsOut = JSON.stringify(shops);
+        
+	var final = [particlesOut+"\n", projectilesOut+"\n", beamsOut+"\n", shopsOut+"\n", Currency+"\n", starbeams];
+	var a = document.createElement('a');
+  	var save = new Blob(final, {type: 'text/plain'});
+  	a.href = URL.createObjectURL(save);
+  	a.download = "NBodySave";
+	a.dataset.downloadurl = ['text/plain', a.download, a.href].join(':');
+	a.click();
+	alert("Save the file to the parent folder to be able to load it.");
+}
+
+
+function update() {
+    if (screen.width != window.innerWidth - 20)
+    {
+       	screen.width = window.innerWidth - 20;
+    }
+    if (screen.height != window.innerHeight - 40)
+    {
+   	screen.height = window.innerHeight - 40;
+    }
+    if (controlledParticle < 0)
+    {
+	controlledParticle = 0;
+    }
+    if (controlledParticle >= particles.length)
+    {
+	controlledParticle = particles.length - 1;
+    }
+    resetforces(); //Set all forces to zero at the beginning of each frame
+    applyforces(); //Apply electrostatic forces between particles based on their charge and distance
+    updateparticles(); //Update the velocities and positions of each particle
+    collidetest();
+    requestAnimationFrame(draw); //Draw the particles
+    screenPosX += particles[controlledParticle].xspeed / fps;
+    screenPosY += particles[controlledParticle].yspeed / fps;
+    screenPosX = ((screenPosX - screen.width / 2) + particles[controlledParticle].x) / 2;
+    screenPosY = ((screenPosY - screen.height / 2) + particles[controlledParticle].y) / 2;
+	for (var i = 0; i < shops.length; i++)
+	{
+		for (var j = 0; j < particles.length; ++j)
+		{
+			 var dx = particles[j].x - shops[i].x;
+           		 var dy = particles[j].y - shops[i].y;
+           		 var distance = Math.sqrt(dx * dx + dy * dy);
+	   		 var px = dx ^ 2 / Math.sqrt(dx ^ 2 + dy ^2);
+	   	 	var py = dy ^ 2 / Math.sqrt(dx ^ 2 + dy ^2);
+           	 	var force = 1 / (distance * distance);
+            		if (force > 1000) force = 1000; //Make sure the simulation doesn't explode
+            		//Find the horizontal and vertical components of the force
+            		var xforce = px * (particles[j].mass + particles[j].fuel * particles[j].fueldensity) * force;
+            		var yforce = py * (particles[j].mass + particles[j].fuel * particles[j].fueldensity) * force;
+            		//Apply forces to particles
+            		if (distance > 1)
+	    		{
+            			shops[i].xspeed += (xforce / fps);
+            			shops[i].yspeed += (yforce / fps);	
+				shops[i].relativeXSpeed = (shops[i].relativeXSpeed  + (xforce / fps) / distance) / 2;
+            			shops[i].relativeYSpeed = (shops[i].relativeYSpeed  + (yforce / fps) / distance) / 2;	
+
+	   		}
+		}
+		shops[i].x += shops[i].xspeed / fps;
+		shops[i].y += shops[i].yspeed / fps;	
+	}
+	for (var i = 0; i < beams.length ; i++)
+    	{
+		if (beams[i].distance == null || beams[i].distance <= 0)
+		{
+			beams[i].distance = Math.sqrt((particles[beams[i].p1].x - particles[beams[i].p2].x) * (particles[beams[i].p1].x - particles[beams[i].p2].x) + (particles[beams[i].p1].y - particles[beams[i].p2].y) * (particles[beams[i].p1].y - particles[beams[i].p2].y));
+		}
+		else
+		{
+			var currdist = Math.sqrt((particles[beams[i].p1].x - particles[beams[i].p2].x) * (particles[beams[i].p1].x - particles[beams[i].p2].x) + (particles[beams[i].p1].y - particles[beams[i].p2].y) * (particles[beams[i].p1].y - particles[beams[i].p2].y));
+			var distX = (particles[beams[i].p1].x - particles[beams[i].p2].x);
+			var distY = (particles[beams[i].p1].y - particles[beams[i].p2].y);
+			var totalMass = (particles[beams[i].p1].mass + particles[beams[i].p2].mass);
+			var vect = Math.atan2(distX,distY);
+			var RatioMomentumTransfer1 = particles[beams[i].p1].mass / totalMass;
+			var RatioMomentumTransfer2 = particles[beams[i].p2].mass / totalMass;
+			
+			particles[beams[i].p1].xspeed -= (Math.sin(vect) * (currdist - beams[i].distance)) / (particles[beams[i].p1].mass);
+			particles[beams[i].p2].xspeed += (Math.sin(vect) * (currdist - beams[i].distance)) / (particles[beams[i].p2].mass);
+			particles[beams[i].p1].yspeed -= (Math.cos(vect) * (currdist - beams[i].distance)) / (particles[beams[i].p1].mass);
+			particles[beams[i].p2].yspeed += (Math.cos(vect) * (currdist - beams[i].distance)) / (particles[beams[i].p2].mass);
+			//now for dampening
+			var d = 4;
+			var RMT1 = RatioMomentumTransfer1;
+			var RMT2 = RatioMomentumTransfer2;
+			var xspd1 = particles[beams[i].p1].xspeed;
+			var xspd2 = particles[beams[i].p2].xspeed;
+			var yspd1 = particles[beams[i].p1].yspeed;
+			var yspd2 = particles[beams[i].p2].yspeed;
+		}
+   	 }
+	 //shooting star mechanic
+	 var starcount = 1;
+	 var collecting = false;
+	 for (var p = 0; p < projectiles.length; p++)
+	 {
+	 	if (projectiles[p].color == '#FFFF99' && projectiles[p].owner == -1 && projectiles[p].worth == 2500)
+		{
+			starcount++;
+			for (var i = 0; i < particles.length; ++i)
+			{
+				var dx = projectiles[p].x - particles[i].x;
+           			var dy = projectiles[p].y - particles[i].y;
+           			var distance = Math.sqrt(dx * dx + dy * dy);
+				if (particles[i].controllable && distance < 150)
+				{
+					if (distance < 10 + particles[i].size)
+					{
+						particles[i].xspeed += (projectiles[p].xspeed * projectiles[p].energy + projectiles[p].xspeedF * projectiles[p].energy) / (2 * particles[i].mass);
+						particles[i].yspeed += (projectiles[p].yspeed * projectiles[p].energy + projectiles[p].yspeedF * projectiles[p].energy) / (2 * particles[i].mass);
+						if (particles[i].controllable)
+						{
+							Currency += projectiles[p].worth;
+						}
+						projectiles.splice(p,1);
+						if (actiontxt == "Collecting shooting star fragment...")
+						{
+							actiontxt = "";
+						}
+						
+					}
+					else
+					{
+						collecting = true;
+						if (actiontxt == "")
+						{
+							actiontxt = "Collecting shooting star fragment...";
+						}
+            					var force = 1 / (distance * distance); //determine effect of averaging on particle speeds
+            					if (force > 1000) force = 1000;
+     						//projectiles[p].xspeed = (projectiles[p].xspeed + particles[i].xspeed * force) / (1+force);
+						//projectiles[p].yspeed = (projectiles[p].yspeed + particles[i].yspeed * force) / (1+force);
+						graphics.beginPath();
+						graphics.fillStyle = "rgba(68,255,221,"+(Math.ceil(150/distance).toString())+")";	
+    						graphics.strokeStyle = graphics.fillStyle;
+    						graphics.shadowColor = graphics.fillStyle;
+    						graphics.shadowBlur = 3;
+						graphics.setLineDash([]);
+   						graphics.moveTo(particles[i].x-screenPosX,particles[i].y-screenPosY);
+						graphics.lineTo(projectiles[p].x-screenPosX+projectiles[p].length*projectiles[p].xspeed/2,projectiles[p].y-screenPosY+projectiles[p].length*projectiles[p].yspeed/2);					
+						var vect = Math.atan2(dx,dy);
+						projectiles[p].xspeed -= Math.sin(vect) / (distance + 0.1) / fps * 70;
+						projectiles[p].yspeed -= Math.cos(vect) / (distance + 0.1) / fps * 70;
+  						graphics.stroke();
+					}
+				}
+			}
+		}
+		if (!collecting && actiontxt == "Collecting shooting star fragment...")
+		{
+			actiontxt = "";
+		}
+
+	 }
+	 if (Math.random() < 1/(fps*starcount))
+	 {
+		var target = Math.floor(Math.random()*particles.length);
+		var distance = 400 + 40 * particles[target].size + Math.round(Math.random()) * 20 * particles[target].size;
+		var vector = Math.atan2(Math.random(),Math.random());
+		var X = Math.sin(vector)*distance;
+		var Y = Math.cos(vector)*distance;
+		var speed = Math.random()*Math.random()*10;
+		var spdvector = Math.atan2(Math.random(),Math.random());
+		var VX = Math.sin(vector)*speed / fps;
+		var VY = Math.cos(vector)*speed / fps;
+		projectiles.push({
+			color: '#FFFF99',
+			brightness: 3,
+			length: 1,
+			energy: 1,
+			x: X,
+			y: Y,
+			xspeed: VX,
+			yspeed: VY,
+			xspeedF: particles[target].xspeed / fps,  //these dont affect length
+			yspeedF: particles[target].yspeed / fps,
+			owner: -1,
+			worth: 2500
+		});
+	 }
+}
+
+function resetforces() {
+    for (var i = 0; i < particles.length; ++i) {
+        particles[i].xforce = 0;
+        particles[i].yforce = 0;
+    }
+}
+
+function applyforces() {
+    for (var i = 0; i < particles.length; ++i) { //For each particle
+        for (var j = 0; j < particles.length; ++j) { //For each second particle (no repeats)
+	if (i != j)
+	{
+           	 var dx = particles[j].x - particles[i].x;
+           	 var dy = particles[j].y - particles[i].y;
+           	 var distance = Math.sqrt(dx * dx + dy * dy);
+	   	 var px = dx ^ 2 / Math.sqrt(dx ^ 2 + dy ^2);
+	    	var py = dy ^ 2 / Math.sqrt(dx ^ 2 + dy ^2);
+            	var force = 1 / (distance * distance);
+            	if (force > 1000) force = 1000; //Make sure the simulation doesn't explode
+            	//Find the horizontal and vertical components of the force
+            	var xforce = px * (particles[j].mass + particles[j].fuel * particles[j].fueldensity) * force;
+            	var yforce = py * (particles[j].mass + particles[j].fuel * particles[j].fueldensity) * force;
+            	//Apply forces to particles
+            	if (distance > 1)
+	    	{
+            		particles[i].xspeed += (xforce / fps);
+            		particles[i].yspeed += (yforce / fps);
+	   	}
+		
+	    //Combine if force of collision < force of gravity * solidity.
+	    //Break if force of collision * solidity > force of gravity.
+	    //Force of push when clipping depends on solidity.
+	}
+        }
+    }
+}
+function collidetest() {
+	shop = false;
+	if (particles[controlledParticle].controllable)
+	{
+		for (var i = 0; i < shops.length; i++)
+		{
+			var Xdist = Math.abs(shops[i].x - particles[controlledParticle].x);
+			var Ydist = Math.abs(shops[i].y - particles[controlledParticle].y);
+			if ((Xdist+Ydist) / 2 < (20 + particles[controlledParticle].size))
+			{
+				shop = true;
+				var spd = Math.sqrt((shops[i].xspeed - particles[controlledParticle].xspeed) * (shops[i].xspeed - particles[controlledParticle].xspeed) + (shops[i].yspeed - particles[controlledParticle].yspeed) * (shops[i].yspeed - particles[controlledParticle].yspeed));
+				if (spd < 6)
+				{
+					particles[controlledParticle].xspeed = (particles[controlledParticle].xspeed * 4 + shops[i].xspeed) / 5;
+					particles[controlledParticle].yspeed = (particles[controlledParticle].yspeed * 4 + shops[i].yspeed) / 5;
+				}
+			}
+			
+		}
+	}
+	for (var i = 0; i < particles.length; ++i)
+	{
+		if (i == controlledParticle && shop)
+		{
+			//safe
+		}
+		else
+		{
+		for (var p = 0; p < projectiles.length; p++)
+    		{
+			if (projectiles[p].color != '#CC55BB')
+			{
+			var dx = projectiles[p].x - particles[i].x;
+           	 	var dy = projectiles[p].y - particles[i].y;
+           	 	var distance = Math.sqrt(dx * dx + dy * dy);
+	   	 	var px = dx ^ 2 / Math.sqrt(dx ^ 2 + dy ^2);
+	    		var py = dy ^ 2 / Math.sqrt(dx ^ 2 + dy ^2);
+            		var force = 1 / (distance * distance);
+            		if (force > 1000) force = 1000; //Make sure the simulation doesn't explode
+            		//Find the horizontal and vertical components of the force
+            		var xforce = px * (particles[i].mass + particles[i].fuel * particles[i].fueldensity) * force;
+            		var yforce = py * (particles[i].mass + particles[i].fuel * particles[i].fueldensity) * force;
+            		//Apply forces to particles
+            		if (distance > 1)
+	    		{
+            			projectiles[p].xspeed -= (xforce / fps) / 8;
+            			projectiles[p].yspeed -= (yforce / fps) / 8;
+	   		}
+			var dist = Math.sqrt((projectiles[p].x - particles[i].x) * (projectiles[p].x - particles[i].x) + (projectiles[p].y - particles[i].y) * (projectiles[p].y - particles[i].y));
+			var dist2 = Math.sqrt((projectiles[p].x - particles[i].x + projectiles[p].length*projectiles[p].xspeed) * (projectiles[p].x - particles[i].x+ projectiles[p].length*projectiles[p].xspeed) + (projectiles[p].y - particles[i].y + projectiles[p].length*projectiles[p].yspeed) * (projectiles[p].y - particles[i].y + projectiles[p].length*projectiles[p].yspeed));
+			if (dist < particles[i].size && i != projectiles[p].owner)
+			{
+				particles[i].xspeed += (projectiles[p].xspeed * projectiles[p].energy + projectiles[p].xspeedF * projectiles[p].energy) / (2 * particles[i].mass);
+				particles[i].yspeed += (projectiles[p].yspeed * projectiles[p].energy + projectiles[p].yspeedF * projectiles[p].energy) / (2 * particles[i].mass);
+				if (particles[i].controllable)
+				{
+					Currency += projectiles[p].worth;
+				}
+				projectiles.splice(p,1);
+				p = projectiles.length;
+			}
+			}
+		}
+		for (var j = 0; j < particles.length; ++j)
+		{ 
+			if (i != j)
+			{
+				//things either break, 'die' (i.e. ships), get absorbed, or bounce off each other when hit	
+				var dist = Math.sqrt((particles[i].x - particles[j].x) * (particles[i].x - particles[j].x) + (particles[i].y - particles[j].y) * (particles[i].y - particles[j].y));
+				if (dist < (particles[i].size + particles[j].size))
+				{
+					//now we check velocity
+					var spd = Math.sqrt((particles[i].xspeed - particles[j].xspeed) * (particles[i].xspeed - particles[j].xspeed) + (particles[i].yspeed - particles[j].yspeed) * (particles[i].yspeed - particles[j].yspeed));
+
+
+
+
+					if (particles[i].mass > particles[j].mass * 2)
+					{
+						var totalarea = Math.PI * ((particles[i].size) ^ 2) + Math.PI * ((particles[j].size) ^ 2);
+						var finalradius = totalarea / 4;
+						var finalXSpeed = (particles[i].mass * particles[i].xspeed + particles[j].mass * particles[j].xspeed) / particles[i].mass;
+						var finalYSpeed = (particles[i].mass * particles[i].yspeed + particles[j].mass * particles[j].yspeed) / particles[i].mass;
+						particles[i].size = Math.ceil(finalradius);
+						particles[i].mass += particles[j].mass;
+						particles[i].xspeed = finalXSpeed;
+						particles[i].yspeed = finalYSpeed;
+						particles.splice(j,1);
+						for (var B = 0; B < beams.length; B++)
+    						{	
+							if (beams[B].p1 == j)
+							{
+								beams.splice(B,1);
+							}
+							else if (beams[B].p2 == j)
+							{
+								beams.splice(B,1);
+							}
+						}
+						for (var b = 0; b < beams.length; b++)
+    						{
+							if (beams[b].p1 > j)
+							{
+								beams[b].p1--;
+							}
+							if (beams[b].p2 > j)
+							{
+								beams[b].p2--;
+							}
+						}
+						if (controlledParticle == j)
+						{
+							controlledParticle = i;
+							i = particles.length;
+							j = particles.length;
+						}
+						else if (controlledParticle > j)
+						{
+							controlledParticle--;
+							i = particles.length;
+							j = particles.length;
+						}
+					}
+					else if (particles[i].mass * 2 < particles[j].mass)
+					{
+						var totalarea = Math.PI * ((particles[i].size) ^ 2) + Math.PI * ((particles[j].size) ^ 2);
+						var finalradius = totalarea / 4;
+						var finalXSpeed = (particles[i].mass * particles[i].xspeed + particles[j].mass * particles[j].xspeed) / particles[j].mass;
+						var finalYSpeed = (particles[i].mass * particles[i].yspeed + particles[j].mass * particles[j].yspeed) / particles[j].mass;
+						particles[j].size = Math.ceil(finalradius);
+						particles[j].mass += particles[i].mass;
+						particles[i].xspeed = finalXSpeed;
+						particles[i].yspeed = finalYSpeed;
+						particles.splice(i,1);
+						for (var B = 0; B < beams.length; B++)
+    						{	
+							if (beams[B].p1 == i)
+							{
+								beams.splice(B,1);
+							}
+							else if (beams[B].p2 == i)
+							{
+								beams.splice(B,1);
+							}
+						}
+						for (var b = 0; b < beams.length; b++)
+    						{
+							if (beams[b].p1 > i)
+							{
+								beams[b].p1--;
+							}
+							if (beams[b].p2 > i)
+							{
+								beams[b].p2--;
+							}
+						}
+						if (controlledParticle == i)
+						{
+							controlledParticle = j;
+							i = particles.length;
+							j = particles.length;
+						}
+						else if (controlledParticle > i)
+						{
+							controlledParticle--;
+							i = particles.length;
+							j = particles.length;
+						}
+					}
+
+
+				}
+
+
+			}
+		}
+		}
+	}
+}
+
+function updateparticles() {
+    for (var i = 0; i < particles.length; ++i) {
+        //Update particle velocities
+        //Update particle positions
+        particles[i].x += particles[i].xspeed / fps;
+        particles[i].y += particles[i].yspeed / fps;
+    }
+}
+
+
+function draw() {
+    //Clear the screen for drawing
+    graphics.clearRect(0, 0, screen.width, screen.height);
+    graphics.fillStyle = 'black';
+    graphics.fillRect(0, 0, screen.width, screen.height);
+    //Draw each particle as a black circles with radius 10
+    graphics.fillStyle = 'white';
+    graphics.strokeStyle = 'white';
+    for (var i = 0; i < particles.length; ++i) {
+	graphics.fillStyle = particles[i].color;	
+	graphics.strokeStyle = particles[i].color;
+	graphics.shadowColor = particles[i].color;
+	graphics.shadowBlur = particles[i].light+1;
+        graphics.beginPath();
+        graphics.arc(particles[i].x-screenPosX, particles[i].y-screenPosY, particles[i].size, 0, 2 * Math.PI);
+	graphics.stroke();
+	graphics.fill();
+	particles[i].lines.push({
+		x: particles[i].x,
+		y: particles[i].y
+	});
+	graphics.beginPath();
+	graphics.moveTo(particles[i].lines[0].x-screenPosX,particles[i].lines[0].y-screenPosY);
+	for (var L = 0; L < particles[i].lines.length; L++)
+	{
+		graphics.lineTo(particles[i].lines[L].x-screenPosX,particles[i].lines[L].y-screenPosY);
+		graphics.moveTo(particles[i].lines[L].x-screenPosX,particles[i].lines[L].y-screenPosY);
+	}
+	var SPD = Math.sqrt(Math.abs(particles[i].xspeed * particles[i].xspeed) + Math.abs(particles[i].yspeed * particles[i].yspeed)); 
+	while (Math.random() * particles[i].lines.length / (Math.random() *(SPD + 1)) > Math.sqrt(fps)*0.75 || particles[i].lines.length > fps * (i == controlledParticle ? 3 : 2))
+	{
+		particles[i].lines.shift(1);
+	}
+	graphics.stroke();
+    
+    }	
+    for (var s = 0; s < shops.length; s++)
+    {
+	graphics.strokeStyle = "#880055";
+	graphics.shadowColor = "#00FFFF";
+	graphics.shadowBlur = 8;
+	var x = shops[s].x-screenPosX;
+	var y = shops[s].y-screenPosY;
+	graphics.beginPath();	
+	graphics.arc(x, y, 3, 0, 2 * Math.PI);
+	graphics.strokeStyle = "#00FFFF";
+	graphics.rect(x-20,y-20,40,40);
+	graphics.stroke();
+	graphics.fillStyle = "#00FFFF";
+	graphics.fillText("SHOP",x-14,y-24);
+	if (shop)
+	{
+			
+		graphics.fillText("IN STOCK ("+Currency+"\u0394)",x-14,y+28);
+		graphics.fillText("1) +3024 FUEL (5000\u0394)",x-14,y+38);
+		graphics.fillText("2) STAR BEAM (15000\u0394)",x-14,y+48);
+		graphics.fillText("3) SPAWN SHIP (10000\u0394)",x-14,y+58);
+		if (particles[controlledParticle].photongun <= 0)
+		{
+			graphics.fillText("4) PULSE GUN (5000\u0394)",x-14,y+68);
+		}
+		else if (particles[controlledParticle].photongun > 0)
+		{
+			graphics.fillText("4) PULSE GUN UPGRADE (5000\u0394)",x-14,y+68);
+		}
+		if (particles[controlledParticle].arcgun <= 0)
+		{
+			graphics.fillText("5) ARC GUN (5000\u0394)",x-14,y+78);
+		}
+		else if (particles[controlledParticle].arcgun > 0)
+		{
+			graphics.fillText("5) ARC GUN UPGRADE (5000\u0394)",x-14,y+78);
+		}
+		if (particles[controlledParticle].kineticgun <= 0)
+		{
+			graphics.fillText("6) KINETIC GUN (5000\u0394)",x-14,y+88);
+		}
+		else if (particles[controlledParticle].kineticgun > 0)
+		{
+			graphics.fillText("6) KINETIC GUN UPGRADE (5000\u0394)",x-14,y+88);
+		}
+		if (particles[controlledParticle].tractorbeam <= 0)
+		{
+			graphics.fillText("7) TRACTOR BEAM GUN (5000\u0394)",x-14,y+98);
+		}
+		else if (particles[controlledParticle].tractorbeam > 0)
+		{
+			graphics.fillText("7) TRACTOR BEAM GUN UPGRADE (5000\u0394)",x-14,y+98);
+		}
+		if (particles[controlledParticle].solar <= 0)
+		{
+			graphics.fillText("8) SOLAR RECHARGE (5000\u0394)",x-14,y+108);
+		}
+		else if (particles[controlledParticle].solar > 0)
+		{
+			graphics.fillText("8) SOLAR RECHARGE UPGRADE (5000\u0394)",x-14,y+108);
+		}
+	}
+	shops[s].trail.push({
+		x: shops[s].x,
+		y: shops[s].y
+	});
+	graphics.beginPath();
+	for (var T = 0; T < shops[s].trail.length; T++)
+	{
+		graphics.lineTo(shops[s].trail[T].x-screenPosX,shops[s].trail[T].y-screenPosY);
+		graphics.moveTo(shops[s].trail[T].x-screenPosX,shops[s].trail[T].y-screenPosY);
+	}
+	if (shops[s].trail.length > 10 * fps)
+	{
+		shops[s].trail.shift(1);
+	}
+	graphics.stroke();
+    }
+    for (var i = 0; i < particles.length; ++i) {
+	if (Math.abs((particles[i].x-screenPosX)/MinimapScale) < 80 && Math.abs((particles[i].y-screenPosY)/MinimapScale) < 80 && Math.abs((particles[i].x-screenPosX)/MinimapScale) > -80 && Math.abs((particles[i].y-screenPosY)/MinimapScale) > -80)
+	{
+		graphics.fillStyle = particles[i].color;	
+		graphics.strokeStyle = particles[i].color;
+		graphics.shadowColor = particles[i].color;
+		graphics.shadowBlur = particles[i].light+1;
+       	graphics.beginPath();
+       	graphics.arc(80+((particles[i].x-screenPosX)/MinimapScale), (particles[i].y-screenPosY)/MinimapScale+screen.height-(130), Math.ceil(particles[i].size / MinimapScale), 0, 2 * Math.PI);
+		graphics.stroke();
+		graphics.fill();
+	}
+    }
+    for (var i = 0; i < beams.length; i++)
+    {
+	graphics.beginPath();
+	graphics.fillStyle = "#FF00FF";	
+    	graphics.strokeStyle = "#FF00FF";
+    	graphics.shadowColor = "#FF00FF";
+    	graphics.shadowBlur = 6;
+	graphics.setLineDash([3,3]);
+   	graphics.moveTo(particles[beams[i].p1].x-screenPosX,particles[beams[i].p1].y-screenPosY);
+	graphics.lineTo(particles[beams[i].p2].x-screenPosX,particles[beams[i].p2].y-screenPosY);
+  	graphics.stroke();
+	graphics.setLineDash([]);
+
+    }
+    graphics.lineWidth = 1;
+    for (var i = 0; i < projectiles.length; i++)
+    {
+	graphics.beginPath();
+	graphics.fillStyle = projectiles[i].color;	
+    	graphics.strokeStyle = projectiles[i].color;
+    	graphics.shadowColor = projectiles[i].color;
+    	graphics.shadowBlur = projectiles[i].brightness;
+	console.log(graphics.lineWidth);
+	if (projectiles[i].color == '#FFFF99' && projectiles[i].owner == -1 && projectiles[i].worth == 2500)
+	{
+		graphics.lineWidth = 2;
+	}
+	else
+	{
+		graphics.lineWidth = 1;
+	}
+	graphics.setLineDash([]);
+   	graphics.moveTo(projectiles[i].x-screenPosX+projectiles[i].length*projectiles[i].xspeed,projectiles[i].y-screenPosY+projectiles[i].length*projectiles[i].yspeed);
+	graphics.lineTo(projectiles[i].x-screenPosX,projectiles[i].y-screenPosY);
+  	graphics.stroke();
+	projectiles[i].x += projectiles[i].xspeed;
+	projectiles[i].y += projectiles[i].yspeed;
+	projectiles[i].x += projectiles[i].xspeedF;
+	projectiles[i].y += projectiles[i].yspeedF;
+	var shortestdist = 3000;
+	for (var j = 0; j < particles.length; ++j)
+	{
+		var dist = Math.sqrt(Math.abs(projectiles[i].x - particles[j].x) ^ 2 + Math.abs(projectiles[i].y - particles[j].y) ^ 2);
+		if (dist < shortestdist)
+		{
+			shortestdist = dist;
+		}
+	}
+	if (shortestdist >= 3000)
+	{
+		projectiles.splice(i,1);
+	}
+    }
+    graphics.lineWidth = 1;
+    graphics.fillStyle = particles[controlledParticle].color;	
+    graphics.strokeStyle = particles[controlledParticle].color;
+    graphics.shadowColor = particles[controlledParticle].color;
+    graphics.shadowBlur = particles[controlledParticle].light+1;
+    graphics.beginPath();
+    graphics.rect(-10,screen.height-50,160,60);
+    graphics.rect(-10,screen.height-210,160,160);
+    graphics.stroke();
+   var SPD = Math.sqrt(Math.abs(particles[controlledParticle].xspeed * particles[controlledParticle].xspeed) + Math.abs(particles[controlledParticle].yspeed * particles[controlledParticle].yspeed)); 	
+graphics.fillText(particles[controlledParticle].name,10,screen.height-35);
+graphics.fillText("SPD:"+SPD,10,screen.height-20);
+graphics.fillText(actiontxt,10,screen.height-220);
+	if (particles[controlledParticle].controllable)
+	{
+		graphics.fillText("FUEL:"+(Math.round(particles[controlledParticle].fuel)),10,screen.height-10);
+		if (particles[controlledParticle].photongun > 0 && selectedWeapon == 0)
+		{
+			var color = "#00FFFF";
+			graphics.fillStyle = color;	
+   			graphics.strokeStyle = color;
+    			graphics.shadowColor = color;
+    			graphics.shadowBlur = 5;
+			graphics.fillText("[PULSE GUN]",10,screen.height-240);
+		}
+		else if (particles[controlledParticle].photongun <= 0 && selectedWeapon == 0)
+		{
+			var color = "#444444";
+			graphics.fillStyle = color;	
+   			graphics.strokeStyle = color;
+    			graphics.shadowColor = color;
+    			graphics.shadowBlur = 5;
+			graphics.fillText("[PULSE GUN]",10,screen.height-240);
+		}
+		if (particles[controlledParticle].arcgun > 0 && selectedWeapon == 1)
+		{
+			var color = "#FFFF00";
+			graphics.fillStyle = color;	
+   			graphics.strokeStyle = color;
+    			graphics.shadowColor = color;
+    			graphics.shadowBlur = 5;
+			graphics.fillText("[ARC GUN]",10,screen.height-240);
+		}
+		else if (particles[controlledParticle].arcgun <= 0 && selectedWeapon == 1)
+		{
+			var color = "#444444";
+			graphics.fillStyle = color;	
+   			graphics.strokeStyle = color;
+    			graphics.shadowColor = color;
+    			graphics.shadowBlur = 5;
+			graphics.fillText("[ARC GUN]",10,screen.height-240);
+		}
+		if (particles[controlledParticle].kineticgun > 0 && selectedWeapon == 2)
+		{
+			var color = "#FF8800";
+			graphics.fillStyle = color;	
+   			graphics.strokeStyle = color;
+    			graphics.shadowColor = color;
+    			graphics.shadowBlur = 5;
+			graphics.fillText("[KINETIC GUN]",10,screen.height-240);
+		}
+		else if (particles[controlledParticle].kineticgun <= 0 && selectedWeapon == 2)
+		{
+			var color = "#444444";
+			graphics.fillStyle = color;	
+   			graphics.strokeStyle = color;
+    			graphics.shadowColor = color;
+    			graphics.shadowBlur = 5;
+			graphics.fillText("[KINETIC GUN]",10,screen.height-240);
+		}
+		if (particles[controlledParticle].tractorbeam > 0 && selectedWeapon == 3)
+		{
+			var color = "#FF00FF";
+			graphics.fillStyle = color;	
+   			graphics.strokeStyle = color;
+    			graphics.shadowColor = color;
+    			graphics.shadowBlur = 5;
+			graphics.fillText("[TRACTOR BEAM]",10,screen.height-240);
+		}
+		else if (particles[controlledParticle].tractorbeam <= 0 && selectedWeapon == 3)
+		{
+			var color = "#444444";
+			graphics.fillStyle = color;	
+   			graphics.strokeStyle = color;
+    			graphics.shadowColor = color;
+    			graphics.shadowBlur = 5;
+			graphics.fillText("[TRACTOR BEAM]",10,screen.height-240);
+		}
+	}
+}
+
+</script>
