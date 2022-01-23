@@ -1,0 +1,129 @@
+<canvas id="screen" width="1000" height="1000"/>
+//checkerboard randomgen
+//gray is counted as 0.5
+//dark tiles are counted as 1 (there is something there)
+//white tiles are counted as 0 (there is nothing there)
+//a random tile is selected
+//it is assigned a value based on the nearby objects in the grid
+//if the surrounding tiles are mostly black, the tile will become a white tile
+
+
+//example tile: tiles[1][2]; multidimensional array
+
+<script>
+var screen = document.getElementById('screen');
+var canvas = screen.getContext('2d');
+var tiles = []
+var width = 50
+var height = 50
+var scale = 2
+var rules = []
+rules.push({
+	quickLoad: false, //false for use of conditionals; true for a faster run using targetDists
+	conditional: function Condition(dist) {return dist == 7},
+	divDistPower: 0,
+	valuePower: 2
+
+
+})
+var m = 1
+var cursorX
+var cursorY
+document.onmousemove = function(e){
+	cursorX = e.pageX;
+	cursorY = e.pageY;
+}
+document.addEventListener("mouseup", function(e){
+	location.reload()
+
+})
+
+setInterval(Main, 1000/1000); 
+function setTile(x,y,v)
+{
+	tiles[y][x] = v
+	var brightnessColor = (Math.floor(v*255)).toString(16) 
+	while (brightnessColor.length < 2)
+	{
+		brightnessColor = "0" + brightnessColor
+	}
+	var color = "#" + brightnessColor + brightnessColor + brightnessColor
+	canvas.fillStyle = color
+	canvas.fillRect(x*scale,y*scale,scale,scale)
+}
+canvas.fillStyle = "#888888"
+for (var i = 0; i < height; i++)
+{
+	var row = []
+	for (var j = 0; j < width; j++)
+	{
+		row.push(0)
+	}
+	tiles.push(row)
+}
+for (var y = 0; y < tiles.length; y++)
+{
+	for (var x = 0; x < tiles[y].length; x++)
+	{	
+		setTile(x,y,Math.random())
+	}
+}	
+function Main() 
+{
+	var remainingTiles = []
+	for (var i = 0; i < height; i++)
+	{
+		for (var j = 0; j < width; j++)
+		{
+			remainingTiles.push([j,i])
+		}
+	}
+	while (remainingTiles.length > 0)
+	{
+		tileSelected = Math.floor(Math.random() * remainingTiles.length)
+		var posX = remainingTiles[tileSelected][0]
+		var posY = remainingTiles[tileSelected][1]
+		var total = 0
+		var value = 0
+		for (var i = 0; i < rules.length; i++)
+		{
+			if (rules[i].quickLoad == false)
+			{
+				for (var y = 0; y < tiles.length; y++)
+				{
+					for (var x = 0; x < tiles[y].length; x++)
+					{	
+						var distX = ((Math.abs(posX - x) + width) % width)
+						var distY = ((Math.abs(posY - y) + height) % height)
+						var dist = Math.sqrt(distX * distX + distY * distY)	
+						if (rules[i].conditional(dist) == true)
+						{
+							total = total + 1
+							if (rules[i].divDistPower != 0)
+							{
+								total = total - 1 + 1 / Math.pow(dist,rules[i].divDistPower)
+							}
+							var n = Math.pow(1 - tiles[y][x], rules[i].valuePower) 
+							value = value + n
+							if (rules[i].divDistPower != 0)
+							{
+								total = total - n + n / Math.pow(dist,rules[i].divDistPower)
+							}
+						}
+					}
+				}
+			}
+		}		
+		value = value / total
+		setTile(posX,posY,value)
+		remainingTiles.splice(tileSelected,1)
+	}
+	
+}
+
+
+
+
+
+
+</script>

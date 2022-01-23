@@ -1,0 +1,164 @@
+<canvas id="screen" width="300" height="300"/>
+<script>
+//This code written by Duncan M. Loomis
+//This didn't take very long to make, and I enjoyed making it very much.
+var screen = document.getElementById('screen');
+var canvas = screen.getContext('2d');
+var mouseDown = 0;
+var cursorX = 0
+var cursorY = 0
+var interval = 0.05
+var start = -2*Math.PI
+var CurrentIteration = 0
+var num = 4*Math.PI/interval;
+var xscale = 30/4*3;
+var yscale = 30/4*3;
+var lineWidth = 2;
+var lineTransparency = 1;
+var Time = 0;
+var screenWidth = 400;
+var screenHeight = 400;
+var drawGrid = false
+var drawOrigin = true
+var interCalcStuff = [];
+function PowerSeriesCos(x)
+{
+	document.addEventListener("keydown", function (event) {
+	if (event.key == "p")
+	{
+		var image = document.getElementsByTagName("canvas")[0].toDataURL("image/png").replace("image/png", "image/octet-stream");	
+		window.location.assign(image); // it will save locally
+	}
+})
+}
+function gamma(z) {
+	return Math.sqrt(2 * Math.PI / z) * Math.pow((1 / Math.E) * (z + 1 / (12 * z - 1 / (10 * z))), z);
+}
+function factorial(z)
+{
+	return gamma(z+1);
+}
+function powerSeriesPart(a,x,c,n)
+{
+	return a * Math.pow((x-c),n)
+}
+
+var a = 0
+setInterval(Main, 1);
+
+var calculation = function Solve(x) {
+
+
+var out = [];
+var n = 0;
+for (var i = 0; i < 200; i++)
+{
+	n = n + Math.pow(-1,i) * Math.pow(x,2*i+1) / factorial(2 * i + 1)
+};
+out.push([x,n,"#00ff00"]);
+
+
+
+//decorative
+out.push([-2*Math.PI,x,"#0000ff"])
+out.push([2*Math.PI,x,"#0000ff"])
+out.push([x,2*Math.PI,"#0000ff"])
+out.push([x,-2*Math.PI,"#0000ff"])
+
+return out;
+
+}
+
+function setCalc(func, number, interv, startPnt, scaleX = 10, scaleY = 10, width = 1, transparency = 1){
+
+	CurrentIteration = 0
+	Time = 0
+	calculation = func
+	num = number
+	start = startPnt
+	interval = interv
+	lineWidth = width;
+	xscale = scaleX;
+	yscale = scaleY
+	lineTransparency = transparency
+}
+function Main() {
+	requestAnimationFrame(draw)
+}
+function draw() {
+	if (CurrentIteration == 0)
+	{
+		screen.width = screenWidth;
+		screen.height = screenHeight;
+		canvas.fillStyle = "#eeeeee"
+		canvas.fillRect(0,0, screen.width, screen.height)
+		canvas.strokeStyle = "#000000"
+		if (drawOrigin)
+		{
+			canvas.beginPath()
+			canvas.moveTo(screen.width / 2,0)
+			canvas.lineTo(screen.width / 2,screen.height)
+			canvas.stroke()
+			canvas.beginPath()
+			canvas.moveTo(0,screen.height/2)
+			canvas.lineTo(screen.width,screen.height/2)
+			canvas.stroke()
+		}
+		if (drawGrid)
+		{
+			var pos = 0;
+			var linesize = xscale > yscale ? yscale : xscale
+			while (pos < screen.width)
+			{
+				pos = pos + xscale
+				canvas.strokeStyle = "#888888"
+				canvas.beginPath()
+				canvas.moveTo(pos, 0)
+				canvas.lineTo(pos, screen.height)
+				canvas.stroke()
+				canvas.strokeStyle = "#000000"
+				if (Math.abs(pos-(screen.width/2)) > 1)
+				{
+					canvas.beginPath()
+					canvas.moveTo(pos,(screen.height/2)-linesize/3)
+					canvas.lineTo(pos,(screen.height/2)+linesize/3)
+					canvas.stroke()
+				}
+			}
+			var pos = 0
+			while (	pos < screen.height)
+			{
+				pos = pos + yscale
+				canvas.strokeStyle = "#888888"
+				canvas.beginPath()
+				canvas.moveTo(0, pos)
+				canvas.lineTo(screen.width, pos)
+				canvas.stroke()
+				canvas.strokeStyle = "#000000"
+				if (Math.abs(pos-(screen.height/2)) > 1)
+				{
+					canvas.beginPath()
+					canvas.moveTo((screen.width/2)-linesize/3, pos)
+					canvas.lineTo((screen.width/2)+linesize/3, pos)
+					canvas.stroke()
+				}
+			}
+		}
+	}
+	if (CurrentIteration < num)
+	{
+		var answer = eval(calculation(start + interval * CurrentIteration));
+		canvas.fillStyle = "#000055"+Math.round(lineTransparency * 255).toString(16)
+		for (var i = 0; i < answer.length; i++)
+		{
+			canvas.fillStyle = answer[i][2];
+			canvas.fillRect(screen.height/2 - 0.5*lineWidth + answer[i][0] * xscale, screen.height/2 - 0.5*lineWidth - answer[i][1] * yscale, 2, 2)					
+		}
+		CurrentIteration = CurrentIteration + 1	
+	}
+}
+
+
+
+
+</script>

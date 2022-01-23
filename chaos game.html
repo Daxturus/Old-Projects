@@ -1,0 +1,71 @@
+<canvas id="screen" width="5000" height="5000"/>
+
+
+<script>
+var screen = document.getElementById('screen');
+var canvas = screen.getContext('2d');
+var fps = 1000
+setInterval(Main, 1000/fps); 
+var perframe = 1000
+var px = Math.random() * screen.width
+var py = Math.random() * screen.height
+var lastAtt = []
+lastAtt.push(0)
+var attractors = []
+var goPercent = Math.sqrt(Math.random())
+var num = 0
+while (Math.random() > 0.25 || num < 3)
+{
+	attractors.push({x: screen.width * Math.random(), y: screen.height * Math.random(), chance: Math.sqrt(Math.random())})
+	num = num + 1
+}
+var attBuffer = Math.round((num-2)*Math.random())
+if (attBuffer > 3)
+{
+	attBuffer = 3
+}
+function Main() {
+	requestAnimationFrame(Draw)	
+}
+canvas.fillStyle = "#ff0000"
+canvas.fillText(goPercent+"  |  "+attBuffer +"/"+num+"  |  "+JSON.stringify(attractors),0,20)
+var S = 12
+canvas.fillStyle = "#ff00ff88"
+for (var j = 0; j < attractors.length; j++)
+{
+		canvas.fillRect(attractors[j].x-S/2,attractors[j].y-S/2,S,S)
+}
+canvas.fillStyle = "#00000088"
+function Draw() {
+	
+	var i = 0
+	while (i < perframe)
+	{
+		canvas.fillRect(px-0.5,py-0.5,1,1)
+		var att = lastAtt[lastAtt.length-1]
+		while (lastAtt.includes(att) == true)
+		{
+			att = Math.floor(Math.random() * (attractors.length))
+			if (Math.random() > attractors[att].chance)
+			{
+				att = lastAtt[0]
+			}
+		}
+		px = (px + attractors[att].x * goPercent) / (1+goPercent)
+		py = (py + attractors[att].y * goPercent) / (1+goPercent)
+		i = i + 1
+		lastAtt.push(att)
+		if (lastAtt.length > attBuffer)
+		{
+			lastAtt.shift()
+		}
+		//console.log(lastAtt)
+	}
+}
+
+
+
+
+
+
+</script>

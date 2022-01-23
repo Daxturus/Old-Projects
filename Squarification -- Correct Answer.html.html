@@ -1,0 +1,45 @@
+<canvas id="screen" width="1000" height="1000"/>
+
+
+<script>
+var screen = document.getElementById('screen');
+var canvas = screen.getContext('2d');
+setInterval(Main, 1);
+//how to move a point on a circle to the intersection between the parallel of the tangent line on the circle touching the point and the lines of the squared circle around the circle 
+function moveOut(a,r)
+{
+	a2 = a - (Math.PI/2)*Math.round(a/(Math.PI/2))
+	x = r * Math.cos(a) / Math.cos(a2)
+	y = r * Math.sin(a) / Math.cos(a2)
+	return [x,y]
+}
+function Main() {
+	requestAnimationFrame(draw)
+}
+var a = 0;
+function draw() {
+	canvas.fillStyle = "#ffffff";
+	canvas.fillRect(0,0,1000,1000)
+	canvas.fillStyle = "#000000";
+	var result = moveOut(a,100)
+	canvas.fillRect(500+result[0]-5,500+result[1]-5,10,10)
+	a = (a + 0.005) % (Math.PI * 2)
+	var dx = Math.abs(result[0] - 100 * Math.cos(a))
+	var dy = Math.abs(result[1] - 100 * Math.sin(a))
+	var d = Math.sqrt(dx*dx+dy*dy)
+	canvas.fillText(d,100,100);
+	canvas.beginPath()
+	canvas.strokeStyle = "#111111"
+	canvas.arc(500,500,200,0,a)
+	canvas.stroke()
+	canvas.beginPath()
+	canvas.moveTo(500,500)
+	canvas.lineTo(500+Math.cos(a)*200,500+Math.sin(a)*200)
+	canvas.stroke()
+	
+}
+
+
+
+
+</script>

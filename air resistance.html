@@ -1,0 +1,100 @@
+<canvas id="screen" width="1000" height="1000"/>
+
+
+<script>
+var screen = document.getElementById('screen');
+var canvas = screen.getContext('2d');
+var fps = 1000
+setInterval(Main, 1000/fps);
+//how to move a point on a circle to the intersection between the parallel of the tangent line on the circle touching the point and the lines of the squared circle around the circle 
+var markers = 10
+var markerHeight = 100
+var turbulenceThreshold = Math.pow(10,6) //approximate reynolds number required to generate turbulent flow
+var airViscosity = 1.48 * Math.pow(10,-5)
+var airDensity = 1.225
+function Main() {
+	requestAnimationFrame(draw)
+}
+var windX = 0
+var windY = 0
+var particles = []
+particles.push({
+	ax: 0,
+	ay: 1,
+	vx: 450,
+	vy: 0,
+	x: 0,
+	y: 600,
+	R: 1,
+	A: 0.1,
+	py: 0,
+	px: 0,
+	trail: []
+})
+function draw() {
+	canvas.fillStyle = "#ffffff";
+	canvas.fillRect(0,0,1000,1000)
+	canvas.fillStyle = "#000000";
+	var info = []
+	info.push(windY)
+	canvas.strokeStyle = "#000000";
+	for (var i = 0; i <= markers; i++)
+	{
+		canvas.beginPath()
+		canvas.moveTo(i*screen.width/markers,screen.height)
+		canvas.lineTo(i*screen.width/markers,screen.height-markerHeight)
+		canvas.stroke()
+		canvas.fillText(i/markers*screen.width,i*screen.width/markers-5,screen.height-markerHeight)
+	}
+	for (var P = 0; P < particles.length; P++)
+	{
+		particles[P].trail.push([particles[P].x,particles[P].y])
+		var airspeedX = particles[P].vx + windX
+		var airspeedY = particles[P].vy + windY
+		var pspeed = Math.sqrt(airspeedX*airspeedX+airspeedY*airspeedY)
+		var reynolds = pspeed * particles[P].R / airViscosity
+		if (reynolds > turbulenceThreshold) //turbulent flow
+		{	
+			var dragDir = Math.atan2(particles[P].vy,particles[P].vx)
+			var dragForce = 0.5 * particles[P].R * pspeed * pspeed / fps * particles[P].A * airDensity
+			console.log(dragForce)
+			particles[P].vx = particles[P].vx - Math.cos(dragDir) * dragForce / fps
+			particles[P].vy = particles[P].vy - Math.sin(dragDir) * dragForce / fps
+		}
+		else //laminar flow
+		{
+			particles[P].vx = particles[P].vx - (particles[P].vx-(particles[P].vx + windX/fps*particles[P].A) / Math.pow(Math.pow(Math.E,particles[P].A), 1/fps)) + particles[P].ax / fps
+			particles[P].vy = particles[P].vy - (particles[P].vy - (particles[P].vy + windY/fps*particles[P].A) / Math.pow(Math.pow(Math.E,particles[P].A), 1/fps)) - particles[P].ay / fps
+		}
+		
+		particles[P].py = particles[P].y
+		particles[P].px = particles[P].x
+		particles[P].x = particles[P].x + particles[P].vx / fps
+		particles[P].y = particles[P].y - particles[P].vy / fps
+		canvas.beginPath()
+		canvas.arc(particles[P].x,screen.height-particles[P].y,particles[P].R,0,2*Math.PI)
+		canvas.stroke()
+		info.push(particles[P].A);
+		info.push(particles[P].vx + ",  " + particles[P].vy);
+		info.push(particles[P].x + ",  " + particles[P].y);
+		if (particles[P].trail.length > 200)
+		{
+			particles[P].trail.shift()
+		}
+		for (var i = 0; i < particles[P].trail.length; i++)
+		{
+			canvas.fillRect(particles[P].trail[i][0]-5/2,screen.height-particles[P].trail[i][1]-5/2,5,5);
+		}
+	}
+	for (var i = 0; i < info.length; i++)
+	{
+		canvas.fillText(info[i], 20, 15+i * 15)
+	}
+
+	
+}
+
+
+
+
+</script>

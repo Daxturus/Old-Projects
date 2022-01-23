@@ -1,0 +1,295 @@
+<canvas id="screen" width="300" height="300"/>
+<script>
+//This code written by Duncan M. Loomis
+//This didn't take very long to make, and I enjoyed making it very much.
+var screen = document.getElementById('screen');
+var canvas = screen.getContext('2d');
+var mouseDown = 0;
+var cursorX = 0
+var cursorY = 0
+var interval = 0.5
+var start = 0
+var CurrentIteration = 0
+var num = 100000000;
+var xscale = 50;
+var yscale = 50;
+var lineWidth = 2;
+var lineTransparency = 0.5;
+var Time = 0;
+var screenWidth = 300;
+var screenHeight = 300;
+var drawGrid = false
+var drawOrigin = false
+var interCalcStuff = [];
+function gamma(z) {
+	return Math.sqrt(2 * Math.PI / z) * Math.pow((1 / Math.E) * (z + 1 / (12 * z - 1 / (10 * z))), z);
+}
+function factorial(z)
+{
+	return gamma(z+1);
+}
+function powerSeriesPart(a,x,c,n)
+{
+	return a * Math.pow((x-c),n)
+}
+var a = 0
+setInterval(Main, 1);
+
+var calculation = function Solve(x) {
+if (mouseDown == 1) {CurrentIteration = cursorX / xscale / interval; return [[cursorX / xscale - screenHeight/xscale/2,-cursorY / xscale + screenWidth/yscale/2]];} else return [[0,0]]
+}
+//var p = 150*2
+//var j = 50
+//var out2 = [];
+//out2.push([(x % p)/p*j-5,Math.floor(x/p)/p*j/2])
+//var out = []
+//out.push([0,0])
+//out.push([out2[0][1] * Math.cos(a) - out2[0][0] * Math.sin(a) ,  out2[0][1] * Math.sin(a) + out2[0][0] * Math.cos(a)])
+//out.push([0,0])
+//a = a + Math.PI / j / 50
+//return out
+
+//some nice examples:
+//return x
+//return [1,2,4]
+//return [2+x,-x-2,2-x,x-2]
+//return [x,[x,x+1,"#22334466"]]
+//return [Math.sqrt(x*2),x,x*x/2,x*x*x/4,x*x*x*x/8]
+//return [2*Math.sin(Math.PI*1/(Math.abs(x)+2))]
+//var out = []; for (var i = 0; i < 500; i++){j = i / 50 - 5;out.push((1 / j) * Math.pow(x,j) + (j-1)/j);};return out;
+//var n = 5; var m = 1; var pow = 1; var out = []; for (var i = 1; i < n+1; i++) {m = m * i; pow = pow + 1; var O = 1; for (var j = 0; j < pow; j++) {O = O * x}; O = O * m; out.push(O) }; return out
+//var out = []; for (var i = 0; i < 2000; i++) { out.push(Math.pow(x,i/100)/factorial(i/100)) }; return out
+//return [x*x+2*x,2*x+2]
+//var out = []; for (var i = 0; i < 255; i++) {out.push(Math.sin(x+i/255*5))}; return out
+//var out = []; for (var i = 0; i < 500; i++) {out.push(Math.sin((x+10)*(x+10)/Math.PI)*5+i/500*20-10)}; return out 
+//var out = []; for (var i = 0; i < 250; i++) {out.push(Math.sin(x+i/255*5)+0.005*i*Math.sin(x+i/512*5)+Math.sin(2*x+i/512*5))}; return out
+//var out = []; for (var i = 1; i < 2000; i++) {out.push(-0.001*x*x*x+i/20-50)};return out  
+//if (mouseDown == 1) {CurrentIteration = cursorX / xscale / interval; return [[-cursorX / xscale + screenHeight/xscale/2,-cursorY / xscale + screenWidth/yscale/2]];} else return [[0,0]]
+//var out = []; for (var i = 0; i < 255; i++) {out.push(Math.sin(x+i/20*5))}; return out
+//var out = []; for (var i = 0; i < 255; i++) {out.push(Math.sin(x+i/x*5))}; return out
+//if (CurrentIteration >10/interval) {CurrentIteration = CurrentIteration % (10 / interval); interval = interval + 0.0025}; return Time / 3000 - 5
+//if (CurrentIteration > 20/interval) {CurrentIteration = CurrentIteration % (20 / interval)}; interval = interval + interval * 0.0001 ; return Time / 6000 - 15
+//interval = 0.001; lineTransparency = 0.5; lineWidth = 2; var p = 400; var q = 5; var out = []; for (var i = 0; i < p; i++) {out.push([Math.random() * 10 - 5, (i / p * 10 - 5) + (Math.random() * q * Time / 5000 - q / 2 * Time / 5000)])}; return out;
+//var out = [];CurrentIteration = 0;for (var i = 0; i < interCalcStuff.length; i++){var out2 = [0,0];for (var j = 0; j < i; j++){out2[0] = out2[0] + Math.sin(Time*interval*interCalcStuff[j][0]);out2[1] = out2[1] + Math.cos(Time*interval*interCalcStuff[j][1]);}; out.push(out2);};var l = interCalcStuff.length;if (Time % 2000 * (1+l) * (1+l)  * (1+l) * (1+l) == 0){if (Math.random() < 0.05){interCalcStuff.push([Math.floor(Math.random()*100)/20,Math.floor(Math.random()*100)/20]);}else{ var m = Math.floor(Math.random()*100)/20;interCalcStuff.push([m,m]);};};return out;
+//if (interCalcStuff.length == 0){for (var i = 0; i < 20000; i++){interCalcStuff.push([0,40,0])}};var out = [];for (var i = 0; i < interCalcStuff.length; i++){interCalcStuff[i][0] = (interCalcStuff[i][0] + (1+ Math.round(Math.random()*3))) % 4;interCalcStuff[i][1] = (interCalcStuff[i][1] + ((interCalcStuff[i][0] % 3)*30)-25) / 2;interCalcStuff[i][2] = (interCalcStuff[i][2] + (((interCalcStuff[i][0]+2) % 4)*30)-45) / 2;};for (var i = 0; i < interCalcStuff.length; i++){out.push([interCalcStuff[i][1],interCalcStuff[i][2]])};return out
+
+
+//This is pretty cool.
+// N
+// E(1/n!)(x^n) = e^x
+//n=0
+//var PS = function PS(n) {return 1/factorial(n)}; var out = [];  for (var j = 1; j < 14; j++) {var out2 = 0; for (var i = 0; i < j; i++) {out2 = out2 + powerSeriesPart(PS(i),x,0,i);}; out.push(out2)}; out.push([x,Math.pow(Math.E,x),"#000000"]); return out
+
+//also drunk drawing simulator
+//if (mouseDown == 1) {CurrentIteration = cursorX / xscale / interval; return [[Math.cos(0.00001*Time)*(-cursorX / xscale + screenHeight/xscale/2) + Math.sin(0.00001*Time)*(-cursorY / yscale + screenWidth/yscale/2),Math.sin(0.00001*Time)*(-cursorX / xscale + screenHeight/xscale/2) + Math.cos(0.00001*Time)*(-cursorY / xscale + screenWidth/yscale/2)],[Math.cos(0.00001*Time)*(-cursorX / xscale + screenHeight/xscale/2) + Math.sin(0.00001*Time)*(-cursorY / yscale + screenWidth/yscale/2),Math.sin(0.00001*Time)*(-cursorX / xscale + screenHeight/xscale/2) + Math.cos(0.00001*Time)*(-cursorY / xscale + screenWidth/yscale/2)],[Math.cos(0.00001*Time)*(-cursorX / xscale + screenHeight/xscale/2) + Math.sin(0.00001*Time)*(-cursorY / yscale + screenWidth/yscale/2),Math.sin(0.00001*Time)*(-cursorX / xscale + screenHeight/xscale/2) + Math.cos(0.00001*Time)*(-cursorY / xscale + screenWidth/yscale/2)],[Math.cos(0.00001*Time)*(-cursorX / xscale + screenHeight/xscale/2) + Math.sin(0.00001*Time)*(-cursorY / yscale + screenWidth/yscale/2),Math.sin(0.00001*Time)*(-cursorX / xscale + screenHeight/xscale/2) + Math.cos(0.00001*Time)*(-cursorY / xscale + screenWidth/yscale/2)],[Math.cos(0.00001*Time)*(-cursorX / xscale + screenHeight/xscale/2) + Math.sin(0.00001*Time)*(-cursorY / yscale + screenWidth/yscale/2),Math.sin(0.00001*Time)*(-cursorX / xscale + screenHeight/xscale/2) + Math.cos(0.00001*Time)*(-cursorY / xscale + screenWidth/yscale/2)],[Math.cos(0.00001*Time)*(-cursorX / xscale + screenHeight/xscale/2) + Math.sin(0.00001*Time)*(-cursorY / yscale + screenWidth/yscale/2),Math.sin(0.00001*Time)*(-cursorX / xscale + screenHeight/xscale/2) + Math.cos(0.00001*Time)*(-cursorY / xscale + screenWidth/yscale/2)],[-cursorX / xscale + screenHeight/xscale/2,-cursorY / xscale + screenWidth/yscale/2]];} else return [[0,0]]
+
+
+
+
+
+var changeCalc = false;
+document.onmousemove = function(e){
+    cursorX = e.pageX;
+    cursorY = e.pageY;
+}
+document.body.onmousedown = function() { 
+  ++mouseDown;
+}
+document.body.onmouseup = function() {
+  --mouseDown;
+}
+function setCalc(func, number, interv, startPnt, scaleX = 10, scaleY = 10, width = 1, transparency = 1){
+
+	CurrentIteration = 0
+	Time = 0
+	calculation = func
+	num = number
+	start = startPnt
+	interval = interv
+	lineWidth = width;
+	xscale = scaleX;
+	yscale = scaleY
+	lineTransparency = transparency
+}
+function colorwheel(angle, trans){
+	rdec = Math.round(228 * (Math.sin(angle) + 1) / 2)
+	gdec = Math.round(228 * (Math.sin(angle + 2 * Math.PI / 3) + 1) / 2)
+	bdec = Math.round(228 * (Math.sin(angle - 2 * Math.PI / 3) + 1) / 2)
+	rhex = rdec.toString(16);
+	while (rhex.length < 2)
+	{
+		rhex = "0" + rhex
+	}
+	ghex = gdec.toString(16);
+	while (ghex.length < 2)
+	{
+		ghex = "0" + ghex
+	}
+	bhex = bdec.toString(16);
+	while (bhex.length < 2)
+	{
+		bhex = "0" + bhex
+	}
+	var transparency = Math.round(trans * 255).toString(16)
+	return "#"+rhex+ghex+bhex+transparency
+}
+function Main() {
+	requestAnimationFrame(draw)
+}
+function draw() {
+	if (CurrentIteration == 0)
+	{
+		screen.width = screenWidth;
+		screen.height = screenHeight;
+		canvas.fillStyle = "#eeeeee"
+		canvas.fillRect(0,0, screen.width, screen.height)
+		canvas.strokeStyle = "#000000"
+		if (drawOrigin)
+		{
+			canvas.beginPath()
+			canvas.moveTo(screen.width / 2,0)
+			canvas.lineTo(screen.width / 2,screen.height)
+			canvas.stroke()
+			canvas.beginPath()
+			canvas.moveTo(0,screen.height/2)
+			canvas.lineTo(screen.width,screen.height/2)
+			canvas.stroke()
+		}
+		if (drawGrid)
+		{
+			var pos = 0;
+			var linesize = xscale > yscale ? yscale : xscale
+			while (pos < screen.width)
+			{
+				pos = pos + xscale
+				canvas.strokeStyle = "#888888"
+				canvas.beginPath()
+				canvas.moveTo(pos, 0)
+				canvas.lineTo(pos, screen.height)
+				canvas.stroke()
+				canvas.strokeStyle = "#000000"
+				if (Math.abs(pos-(screen.width/2)) > 1)
+				{
+					canvas.beginPath()
+					canvas.moveTo(pos,(screen.height/2)-linesize/3)
+					canvas.lineTo(pos,(screen.height/2)+linesize/3)
+					canvas.stroke()
+				}
+			}
+			var pos = 0
+			while (	pos < screen.height)
+			{
+				pos = pos + yscale
+				canvas.strokeStyle = "#888888"
+				canvas.beginPath()
+				canvas.moveTo(0, pos)
+				canvas.lineTo(screen.width, pos)
+				canvas.stroke()
+				canvas.strokeStyle = "#000000"
+				if (Math.abs(pos-(screen.height/2)) > 1)
+				{
+					canvas.beginPath()
+					canvas.moveTo((screen.width/2)-linesize/3, pos)
+					canvas.lineTo((screen.width/2)+linesize/3, pos)
+					canvas.stroke()
+				}
+			}
+		}
+	}
+	if (CurrentIteration < num)
+	{
+		var answer = eval(calculation(start + interval * CurrentIteration));
+		canvas.fillStyle = "#000055"+Math.round(lineTransparency * 255).toString(16)
+		if (answer.constructor == Array)
+		{
+				for (var i = 0; i < answer.length; i++)
+				{
+					if (answer[i].constructor == Array)
+					{
+						while (answer[i].length == 1)
+						{
+							answer[i] = answer[i].flat()
+						}
+						if (answer[i].length == 2)
+						{	
+							canvas.fillStyle = colorwheel(2 * Math.PI * i / answer.length,lineTransparency)
+							canvas.fillRect(screen.height/2 - 0.5*lineWidth + answer[i][0] * xscale, screen.height/2 - 0.5*lineWidth - answer[i][1] * yscale, lineWidth, lineWidth)
+						}
+						if (answer[i].length >= 3)
+						{
+							if (answer[i][2].constructor == String)
+							{
+								canvas.fillStyle = answer[i][2];
+								if (answer[i].length >= 4)
+								{
+									if (answer[i][3].constructor == Number)
+									{
+										canvas.fillRect(screen.height/2 - 0.5*lineWidth + answer[i][0] * xscale, screen.height/2 - 0.5*lineWidth - answer[i][1] * yscale, answer[i][3], answer[i][3])						
+									}
+								}
+								else
+								{
+									canvas.fillRect(screen.height/2 - 0.5*lineWidth + answer[i][0] * xscale, screen.height/2 - 0.5*lineWidth - answer[i][1] * yscale, lineWidth, lineWidth)
+								}
+
+							}
+							if (answer[i][2].constructor == Number)
+							{
+								if (answer[i].length >= 4)
+								{
+									if (answer[i][3].constructor == Number)
+									{
+										canvas.fillStyle = colorwheel(answer[i][2],answer[i][3])
+										if (answer[i].length >= 5)
+										{
+											if (answer[i][4].constructor == Number)
+											{
+																
+											}
+											else
+											{
+												console.log("answer[i][4] is NaN :(");
+											}
+										}
+										else
+										{
+											canvas.fillRect(screen.height/2 - 0.5*lineWidth + answer[i][0] * xscale, screen.height/2 - 0.5*lineWidth - answer[i][1] * yscale, lineWidth, lineWidth)						
+										}
+									}
+									else
+									{
+										console.log("answer[i][3] is NaN :(");
+									}
+								}
+								else
+								{
+									canvas.fillStyle = colorwheel(answer[i][2],lineTransparency)
+									canvas.fillRect(screen.height/2 - 0.5*lineWidth + answer[i][0] * xscale, screen.height/2 - 0.5*lineWidth - answer[i][1] * yscale, lineWidth, lineWidth)						
+								}
+				
+							}
+						}
+					}
+					else
+					{
+						canvas.fillStyle = colorwheel(2 * Math.PI * i / answer.length,lineTransparency)
+						canvas.fillRect(screen.width/2 - 0.5*lineWidth + xscale * (start + interval * CurrentIteration), screen.height/2 - 0.5*lineWidth - answer[i] * yscale, lineWidth, lineWidth)
+					}
+				}
+				CurrentIteration = CurrentIteration + 1
+				Time = Time + 1
+		}
+		else
+		{
+			canvas.fillRect(screen.width/2 - 0.5*lineWidth + xscale * (start + interval * CurrentIteration), screen.height/2 - 0.5*lineWidth - answer * yscale, lineWidth, lineWidth)
+			CurrentIteration = CurrentIteration + 1
+			Time = Time + 1
+			
+		}
+	}
+}
+
+
+
+
+</script>

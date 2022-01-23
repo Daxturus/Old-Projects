@@ -1,0 +1,437 @@
+<canvas id="screen" width="1000" height="800"/>
+
+
+<script>
+var screen = document.getElementById('screen');
+var canvas = screen.getContext('2d');
+var fps = 40
+var playerPosX = 7500*Math.cos(60*Math.PI/180)
+var playerPosY = 7500*Math.sin(60*Math.PI/180)
+var PlayerVX = 0
+var PlayerVY = 0
+var PlayerAX = 0
+var PlayerAY = 0
+var cursorX = 0
+var cursorY = 0
+var gasFuel = 100
+var fuelMax = 100
+var ionEnergy = 50
+var energyMax = 100
+var thrustRatio = 1
+var maxThrust = 250
+var maxThrustIon = 50
+var ionBoostPower = 4
+var RTGPowerPerSec = 0.15
+var currentThrustMode = 0
+var gasPerV = 1 / 250
+var energyPerV = 1 / 200
+var currentThrust = 0
+var centralGravity = 1000000000
+
+var wheld = false
+var sheld = false
+var aheld = false
+var dheld = false
+var spaceheld = false
+var shiftheld = false
+var crtlheld = false
+
+setInterval(Main, 1000/fps);
+document.onmousemove = function(e){
+	cursorX = e.pageX;
+	cursorY = e.pageY;
+}
+document.addEventListener("keydown", function (event) {
+	if (event.keyCode == 87)
+	{
+		wheld = true
+	}
+	if (event.keyCode == 83)
+	{
+	 	sheld = true
+	}
+	if (event.keyCode == 65)
+	{
+		aheld = true
+	}
+	if (event.keyCode == 68)
+	{
+		dheld = true
+	}
+	if (event.keyCode == 32)
+	{
+		spaceheld = true
+	}
+	if (event.keyCode == 16)
+	{
+		shiftheld = true
+	}
+	if (event.keyCode == 17)
+	{
+		crtlheld = true
+	}
+
+})
+document.addEventListener("keyup", function (event) {
+	if (event.keyCode == 80)
+	{
+		//Paused = !Paused
+	}
+	if (event.keyCode == 87)
+	{
+		wheld = false
+	}
+	if (event.keyCode == 83)
+	{
+		sheld = false
+	}
+	if (event.keyCode == 65)
+	{
+		aheld = false
+	}
+	if (event.keyCode == 68)
+	{
+		dheld = false
+	}
+	if (event.keyCode == 32)
+	{
+		spaceheld = false
+	}
+	if (event.keyCode == 16)
+	{
+		shiftheld = false
+	}
+	if (event.keyCode == 17)
+	{
+		crtlheld = false
+	}
+	if (event.keyCode == 90)
+	{
+		if (thrustRatio < 0.99)
+		{
+			if (currentThrustMode == 0)
+			{
+				thrustRatio = thrustRatio * maxThrust / maxThrustIon
+			}
+			if (currentThrustMode == 1)
+			{
+				thrustRatio = thrustRatio / ionBoostPower
+			}
+			if (currentThrustMode == 2)
+			{
+				thrustRatio = thrustRatio * (ionBoostPower * maxThrustIon) / maxThrust
+			}
+		}
+		currentThrustMode = (currentThrustMode + 1) % 3
+	}
+})
+
+
+
+
+
+
+
+
+
+var Planets = []
+
+Planets.push({
+	name: "Geo",
+	x: 6000*Math.cos(60*Math.PI/180),
+	y: 6000*Math.sin(60*Math.PI/180),
+	vx: 0,
+	vy: 0,
+	ax: 0,
+	ay: 0,
+	grav: 100000000, //how much does this planet tug at the player
+	rad: 20, //determines how large a planet's core is
+	rowCount: 70,
+	coreColor: "#559955",
+	rows: []
+})
+for (var i = 0; i < Planets[0].rowCount; i++)
+{
+	var row = []
+	for (var j = 0; j < 10; j++)
+	{
+		row.push([j,0])
+	}
+	Planets[0].rows.push(row)
+}
+function drawBox(planet,i,j,col)
+{
+	var m1 = ((planet.rows[i][j][0]+0.5) + planet.rad) * ((planet.rows[i][j][0]+0.5) + planet.rad) * Math.PI / 2
+	var AX = m1*Math.cos(Math.PI*2/planet.rowCount*i)+screen.width/2
+	var AY = m1*Math.sin(Math.PI*2/planet.rowCount*i)+screen.height/2
+	var x2 = m1 * Math.cos(Math.PI * 2 / planet.rowCount * i + Math.PI / 2) / planet.rowCount * Math.PI
+	var y2 = m1 * Math.sin(Math.PI * 2 / planet.rowCount * i + Math.PI / 2) / planet.rowCount * Math.PI
+	
+	var m2 = ((planet.rows[i][j][0]-0.5) + planet.rad) * ((planet.rows[i][j][0]-0.5) + planet.rad) * Math.PI / 2
+	var BX = m2*Math.cos(Math.PI*2/planet.rowCount*i)+screen.width/2
+	var BY = m2*Math.sin(Math.PI*2/planet.rowCount*i)+screen.height/2
+	var x3 = m2 * Math.cos(Math.PI * 2 / planet.rowCount * i + Math.PI / 2) / planet.rowCount * Math.PI
+	var y3 = m2 * Math.sin(Math.PI * 2 / planet.rowCount * i + Math.PI / 2) / planet.rowCount * Math.PI
+	
+	canvas.strokeStyle = "#000000"
+	canvas.fillStyle = col
+	canvas.beginPath()
+	canvas.moveTo(AX+x2-playerPosX+planet.x,AY+y2-playerPosY+planet.y)
+	canvas.lineTo(AX-x2-playerPosX+planet.x,AY-y2-playerPosY+planet.y)
+	canvas.lineTo(BX-x3-playerPosX+planet.x,BY-y3-playerPosY+planet.y)
+	canvas.lineTo(BX+x3-playerPosX+planet.x,BY+y3-playerPosY+planet.y)
+	canvas.lineTo(AX+x2-playerPosX+planet.x,AY+y2-playerPosY+planet.y)
+	canvas.fill()
+	canvas.stroke()
+}
+
+//Code by Dan Fox
+//Create a line between the original position on this frame and the next step position from velocity for all moving objects.
+//Take in to account all loaded planets (can cause issues if you move too fast for a planet to load in)
+//Find the boxes around a planet
+//Find if this line intersects any lines on these
+//If this happens, move the object to the edge of the line and bounce it off
+//Non-planet objects should use a simpler spherical hitbox/collisionbox.
+
+
+//returns true iff the line from (a,b)->(c,d) intersects with (p,q)->(r,s)
+function intersects(a,b,c,d,p,q,r,s) {
+  var det, gamma, lambda;
+  det = (c - a) * (s - q) - (r - p) * (d - b);
+  if (det === 0) {
+    return false;
+  } else {
+    lambda = ((s - q) * (r - a) + (p - r) * (s - b)) / det;
+    gamma = ((b - d) * (r - a) + (c - a) * (s - b)) / det;
+    return (0 < lambda && lambda < 1) && (0 < gamma && gamma < 1);
+  }
+}
+
+function FindAngle(cx, cy, ex, ey) {
+	var dy = ey - cy;
+	var dx = ex - cx;
+	var theta = Math.atan2(dy, dx);
+	return theta;
+}
+
+
+
+
+
+var frames = 0
+function Main() {
+	requestAnimationFrame(draw)
+}
+function draw() {
+	if (shiftheld == true)
+	{
+		thrustRatio = thrustRatio + 0.66 / fps
+	}
+	if (crtlheld == true)
+	{
+		thrustRatio = thrustRatio - 0.66 / fps
+	}
+	ionEnergy = ionEnergy + RTGPowerPerSec / fps
+	ionEnergy = ionEnergy < energyMax ? ionEnergy : energyMax
+	ionEnergy = ionEnergy > 0 ? ionEnergy : 0
+	thrustRatio = thrustRatio < 1 ? thrustRatio : 1
+	thrustRatio = thrustRatio > 0 ? thrustRatio : 0
+	canvas.fillStyle = "#ffffff"
+	canvas.fillRect(0,0,screen.width,screen.height)
+	var COMX = 0
+	var COMY = 0
+	var TM = 0
+	var N = 0
+	var MomentumX = 0
+	var MomentumY = 0
+	canvas.fillStyle = "#000000"
+	for (var i = 0; i < Planets.length; i++)
+	{
+		var dx = Planets[i].x
+		var dy = Planets[i].y
+		var angle = Math.atan2(dy,dx)	
+		var dist = Math.sqrt(dx*dx+dy*dy)
+		var force = centralGravity / (dist * dist)
+		Planets[i].ax = Planets[i].ax - force * Math.cos(angle) / fps
+		Planets[i].ay = Planets[i].ay - force * Math.sin(angle) / fps
+		canvas.fillStyle = Planets[i].coreColor
+		canvas.strokeStyle = Planets[i].coreColor
+		canvas.beginPath()
+		canvas.arc(Planets[i].x+screen.width/2-playerPosX,Planets[i].y+screen.height/2-playerPosY,Planets[i].rad*Planets[i].rad*Math.PI/2,0,2*Math.PI)
+		canvas.fill()
+		canvas.stroke()
+		for (var r = 0; r < Planets[i].rows.length; r++)
+		{
+			for (var j = 0; j < Planets[i].rows[r].length; j++)
+			{
+				drawBox(Planets[i],r,j,"#cccccc")
+			}
+		}
+	}
+	for (var i = 0; i < Planets.length; i++)
+	{
+		Planets[i].vx = Planets[i].vx - Planets[i].ax
+		Planets[i].vy = Planets[i].vy - Planets[i].ay
+		Planets[i].ax = 0
+		Planets[i].ay = 0
+		Planets[i].x = Planets[i].x + Planets[i].vx / fps
+		Planets[i].y = Planets[i].y + Planets[i].vy / fps
+		var dx = playerPosX - Planets[i].x
+		var dy = playerPosY - Planets[i].y
+		var angle = Math.atan2(dy,dx)
+		var dist = Math.sqrt(dx*dx+dy*dy)
+		var force = Planets[i].grav / (dist * dist)
+		PlayerAX = PlayerAX + force * Math.cos(angle) / fps
+		PlayerAY = PlayerAY + force * Math.sin(angle) / fps
+	}
+
+
+
+
+	var mouseang = FindAngle(cursorX, cursorY, screen.width/2, screen.height/2)
+	canvas.fillText(mouseang,20,20)
+	canvas.save()
+	canvas.translate(screen.width/2,screen.height/2)
+	if (mouseang > Math.PI/2 || mouseang < -Math.PI / 2)
+	{
+		canvas.scale(1, -1);
+		mouseang = -mouseang
+	}
+	canvas.rotate(Math.PI+mouseang)
+	canvas.strokeStyle = "#000000"
+	canvas.fillStyle = "#2E2C29"
+	canvas.beginPath()
+	canvas.moveTo(-8,-6)
+	canvas.lineTo(-3,-6)
+	canvas.lineTo(-3,7)
+	canvas.lineTo(-8,7)
+	canvas.lineTo(-8,-6)
+	canvas.fill()
+	canvas.stroke()
+	canvas.fillStyle = "#D4B548"
+	canvas.beginPath()
+	canvas.moveTo(-4,-10)
+	canvas.lineTo(4,-10)
+	canvas.lineTo(4,10)
+	canvas.lineTo(-4,10)
+	canvas.lineTo(-4,-10)
+	canvas.fill()
+	canvas.stroke()
+	canvas.fillStyle = "#D1FFFC"
+	canvas.beginPath()
+	canvas.moveTo(2,1)
+	canvas.lineTo(6,1)
+	canvas.lineTo(6,7)
+	canvas.lineTo(2,7)
+	canvas.lineTo(2,2)
+	canvas.fill()
+	canvas.stroke()
+	canvas.restore();
+	canvas.fillStyle = "#00FF0088"
+	canvas.fillRect(screen.width - 220, 10, screen.width - 20 - 200, 20)
+	canvas.fillStyle = "#A17E3B88"
+	canvas.fillRect(screen.width - 15, 35, -145 * gasFuel / fuelMax, 15)
+	canvas.fillStyle = "#03FFF788"
+	canvas.fillRect(screen.width - 15, 55, -145 * ionEnergy / energyMax, 15)
+	if (currentThrustMode == 0)
+	{
+		canvas.fillStyle = "#B8220088"
+	}
+	if (currentThrustMode == 1)
+	{
+		canvas.fillStyle = "#4D00BF88"
+	}
+	canvas.fillRect(screen.width - 25, screen.height - 10, 15, -150 * thrustRatio)
+
+
+	if (currentThrustMode == 0)
+	{	
+		powerRatio = 1 / Math.sqrt((wheld == true ? 1 : 0) + (sheld == true ? 1 : 0) + (aheld == true ? 1 : 0) + (dheld == true ? 1 : 0))
+		if (wheld == true && (gasFuel - gasPerV * thrustRatio * maxThrust / fps * powerRatio) > 0)
+		{
+			PlayerAY = PlayerAY + thrustRatio * maxThrust / fps * powerRatio
+			gasFuel = gasFuel - gasPerV * thrustRatio * maxThrust / fps * powerRatio
+		}
+		if (sheld == true && (gasFuel - gasPerV * thrustRatio * maxThrust / fps * powerRatio) > 0)
+		{
+			PlayerAY = PlayerAY - thrustRatio * maxThrust / fps * powerRatio
+			gasFuel = gasFuel - gasPerV * thrustRatio * maxThrust / fps * powerRatio
+		}
+		if (aheld == true && (gasFuel - gasPerV * thrustRatio * maxThrust / fps * powerRatio) > 0)
+		{
+			PlayerAX = PlayerAX + thrustRatio * maxThrust / fps * powerRatio
+			gasFuel = gasFuel - gasPerV * thrustRatio * maxThrust / fps * powerRatio
+		}
+		if (dheld == true && (gasFuel - gasPerV * thrustRatio * maxThrust / fps * powerRatio) > 0)
+		{
+			PlayerAX = PlayerAX - thrustRatio * maxThrust / fps * powerRatio
+			gasFuel = gasFuel - gasPerV * thrustRatio * maxThrust / fps * powerRatio
+		}
+	}
+	if (currentThrustMode == 1)
+	{	
+		powerRatio = 1 / Math.sqrt((wheld == true ? 1 : 0) + (sheld == true ? 1 : 0) + (aheld == true ? 1 : 0) + (dheld == true ? 1 : 0))
+		if (wheld == true && (ionEnergy - energyPerV * thrustRatio * maxThrustIon / fps * powerRatio) > 0)
+		{
+			PlayerAY = PlayerAY + thrustRatio * maxThrustIon / fps * powerRatio
+			ionEnergy = ionEnergy - (energyPerV * thrustRatio * maxThrustIon / fps * powerRatio)
+		}
+		if (sheld == true && (ionEnergy - energyPerV * thrustRatio * maxThrustIon / fps * powerRatio) > 0)
+		{
+			PlayerAY = PlayerAY - thrustRatio * maxThrustIon / fps * powerRatio
+			ionEnergy = ionEnergy - (energyPerV * thrustRatio * maxThrustIon / fps * powerRatio)
+		}
+		if (aheld == true && (ionEnergy - energyPerV * thrustRatio * maxThrustIon / fps * powerRatio) > 0)
+		{
+			PlayerAX = PlayerAX + thrustRatio * maxThrustIon / fps * powerRatio
+			ionEnergy = ionEnergy - (energyPerV * thrustRatio * maxThrustIon / fps * powerRatio)
+		}
+		if (dheld == true && (ionEnergy - energyPerV * thrustRatio * maxThrustIon / fps * powerRatio) > 0)
+		{
+			PlayerAX = PlayerAX - thrustRatio * maxThrustIon / fps * powerRatio
+			ionEnergy = ionEnergy - (energyPerV * thrustRatio * maxThrustIon / fps * powerRatio)
+		}
+	}
+	if (currentThrustMode == 2)
+	{	
+		powerRatio = 4 / Math.sqrt((wheld == true ? 1 : 0) + (sheld == true ? 1 : 0) + (aheld == true ? 1 : 0) + (dheld == true ? 1 : 0))
+		if (wheld == true && (ionEnergy - energyPerV * thrustRatio * maxThrustIon / fps * powerRatio) > 0)
+		{
+			PlayerAY = PlayerAY + thrustRatio * maxThrustIon / fps * powerRatio
+			ionEnergy = ionEnergy - (energyPerV * thrustRatio * maxThrustIon / fps * powerRatio) * 5
+		}
+		if (sheld == true && (ionEnergy - energyPerV * thrustRatio * maxThrustIon / fps * powerRatio) > 0)
+		{
+			PlayerAY = PlayerAY - thrustRatio * maxThrustIon / fps * powerRatio
+			ionEnergy = ionEnergy - (energyPerV * thrustRatio * maxThrustIon / fps * powerRatio) * 5
+		}
+		if (aheld == true && (ionEnergy - energyPerV * thrustRatio * maxThrustIon / fps * powerRatio) > 0)
+		{
+			PlayerAX = PlayerAX + thrustRatio * maxThrustIon / fps * powerRatio
+			ionEnergy = ionEnergy - (energyPerV * thrustRatio * maxThrustIon / fps * powerRatio) * 5
+		}
+		if (dheld == true && (ionEnergy - energyPerV * thrustRatio * maxThrustIon / fps * powerRatio) > 0)
+		{
+			PlayerAX = PlayerAX - thrustRatio * maxThrustIon / fps * powerRatio
+			ionEnergy = ionEnergy - (energyPerV * thrustRatio * maxThrustIon / fps * powerRatio) * 5
+		}
+	}
+	var dx = playerPosX
+	var dy = playerPosY
+	var angle = Math.atan2(dy,dx)	
+	var dist = Math.sqrt(dx*dx+dy*dy)
+	var force = centralGravity / (dist * dist)
+	PlayerAX = PlayerAX - force * Math.cos(angle) / fps
+	PlayerAY = PlayerAY - force * Math.sin(angle) / fps
+	PlayerVX = PlayerVX - PlayerAX
+	PlayerVY = PlayerVY - PlayerAY
+	PlayerAX = 0
+	PlayerAY = 0
+	playerPosX = playerPosX + PlayerVX / fps
+	playerPosY = playerPosY + PlayerVY / fps
+}
+
+
+
+
+</script>

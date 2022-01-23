@@ -1,0 +1,391 @@
+<canvas id="screen" width="1" height="200"/>
+
+
+<script>
+var screen = document.getElementById('screen');
+var canvas = screen.getContext('2d');
+var fps = 2000
+setInterval(Main, 1000/fps);
+canvas.fillStyle = "#000000"
+var StripNumber = 0
+var Rules = [] //rules go one by one
+var StripPixels = []
+var RowWidth = 2000
+var InvertColors = true
+
+
+
+screen.width = RowWidth+100
+screen.height = 2000
+
+var displayCursor = false
+var cursorX = Math.round(Math.random() * RowWidth)
+var cursorY = Math.round(Math.random() * screen.height)
+var prevX = cursorX
+var prevY = 0
+var GoUp = false
+var GoDown = false
+var GoLeft = false
+var GoRight = false
+var prevEnabled = false
+var mazeMode = false
+var mazeCol = true
+var viewdist = 50
+var cursorMoveFrames = 25
+var cursorFrame = 0
+document.addEventListener("keydown", function (event) {
+	if (event.keyCode == 87)
+	{
+		GoUp = true
+	}
+	if (event.keyCode == 83)
+	{
+		GoDown = true
+	}
+	if (event.keyCode == 65)
+	{
+		GoLeft = true
+	}
+	if (event.keyCode == 68)
+	{
+		GoRight = true
+	}
+});
+document.addEventListener("keyup", function (event) {
+	if (event.keyCode == 87)
+	{
+		GoUp = false
+	}
+	if (event.keyCode == 83)
+	{
+		GoDown = false
+	}
+	if (event.keyCode == 65)
+	{
+		GoLeft = false
+	}
+	if (event.keyCode == 68)
+	{
+		GoRight = false
+	}
+});
+
+
+Rules.push({
+	Tags: [], //E.g. "FalseAboveTop"
+	CellData: [[-1,false,0],[0,false,0],[1,true,0]],
+	Out: true,
+	Logic: "OVERWRITE" //doesn't do anything with inputs, only determines how output acts.
+})
+Rules.push({
+	Tags: [], //E.g. "FalseAboveTop"
+	CellData: [[-1,true,0],[0,false,0],[1,false,0]],
+	Out: true,
+	Logic: "OR" //doesn't do anything with inputs, only determines how output acts.
+})
+Rules.push({
+	Tags: [], //E.g. "FalseAboveTop"
+	CellData: [[-1,false,1],[0,false,1],[1,true,1]],
+	Out: true,
+	Logic: "OR" //doesn't do anything with inputs, only determines how output acts.
+})
+Rules.push({
+	Tags: [], //E.g. "FalseAboveTop"
+	CellData: [[-1,true,1],[0,false,1],[1,false,1]],
+	Out: true,
+	Logic: "OR" //doesn't do anything with inputs, only determines how output acts.
+})
+Rules.push({
+	Tags: [], //E.g. "FalseAboveTop"
+	CellData: [[-1,false,3],[0,true,2],[1,false,3]],
+	Out: false,
+	Logic: "XOR" //doesn't do anything with inputs, only determines how output acts.
+})
+Rules.push({
+	Tags: [], //E.g. "FalseAboveTop"
+	CellData: [[-1,false,1],[0,true,1],[1,false,1]],
+	Out: false,
+	Logic: "EQUALS" //doesn't do anything with inputs, only determines how output acts.
+})
+Rules.push({
+	Tags: [], //E.g. "FalseAboveTop"
+	CellData: [[-1,false,1],[0,true,1],[1,false,1]],
+	Out: false,
+	Logic: "EQUALS" //doesn't do anything with inputs, only determines how output acts.
+})
+Rules.push({
+	Tags: [], //E.g. "FalseAboveTop"
+	CellData: [[-1,false,2],[1,false,2]],
+	Out: false,
+	Logic: "EQUALS" //doesn't do anything with inputs, only determines how output acts.
+})
+Rules.push({
+	Tags: [], //E.g. "FalseAboveTop"
+	CellData: [[-1,false,0],[1,false,0]],
+	Out: false,
+	Logic: "XOR" //doesn't do anything with inputs, only determines how output acts.
+})
+Rules.push({
+	Tags: [], //E.g. "FalseAboveTop"
+	CellData: [[0,true,4],[1,false,2],[-1,false,2]],
+	Out: true,
+	Logic: "XOR" //doesn't do anything with inputs, only determines how output acts.
+})
+Rules.push({
+	Tags: [], //E.g. "FalseAboveTop"
+	CellData: [[0,true,0],[2,false,0],[-2,false,0]],
+	Out: true,
+	Logic: "OR" //doesn't do anything with inputs, only determines how output acts.
+})
+Rules.push({
+	Tags: [], //E.g. "FalseAboveTop"
+	CellData: [[0,true,0],[1,false,0],[-1,false,0]],
+	Out: true,
+	Logic: "OR" //doesn't do anything with inputs, only determines how output acts.
+})
+
+var x = []
+for (var i = 0; i <= RowWidth; i++)
+{
+	//var m = 
+	x.push((Math.round(Math.random()) == 1) ? true : false)
+}
+StripPixels.push(x)
+
+
+//EXTREMELY BASIC DATA SAVING SYSTEM
+console.log("You can see your rules below in JSON form:")
+console.log(JSON.stringify(Rules))
+function Main() {
+
+if (StripNumber < screen.height)
+{
+	
+	var newstrip = []
+	for (var i = 0; i < StripPixels[StripNumber].length; i++)
+	{
+		if (StripPixels[StripNumber][i] == !InvertColors)
+		{
+			canvas.fillRect(i,StripNumber,1,1)
+		}
+		var OUTPUT = false
+		for (var R = 0; R < Rules.length; R++)
+		{
+			var ruleAccept = true
+			for (var P = 0; P < Rules[R].CellData.length; P++)
+			{
+				var PAP = (RowWidth + i + Rules[R].CellData[P][0]) % RowWidth //pixel at position
+				var PAR = (StripNumber - ((Rules[R].CellData[P][2] != null) ? Rules[R].CellData[P][2] : 0))
+				if (!Rules[R].Tags.includes("TrueAboveTop") && !Rules[R].Tags.includes("FalseAboveTop") || PAR >= 0)
+				{
+					PAR = PAR > 0 ? PAR : 0
+					if (StripPixels[PAR][PAP] != Rules[R].CellData[P][1])
+					{
+						ruleAccept = false
+					}
+				}
+				else if (Rules[R].Tags.includes("FalseAboveTop") && PAR < 0)
+				{
+					ruleAccept = false
+				}
+			}
+			if (Rules[R].Logic == "OVERWRITE")
+			{
+				OUTPUT = ruleAccept	
+			}
+			if (Rules[R].Logic == "OR")
+			{
+				if (OUTPUT == false && ruleAccept == false)
+				{
+					OUTPUT = false
+				}
+				else if (OUTPUT == false && ruleAccept == true)
+				{
+					OUTPUT = true
+				}
+				else if (OUTPUT == true && ruleAccept == false)
+				{
+					OUTPUT = true
+				}
+				else if (OUTPUT == true && ruleAccept == true)
+				{
+					OUTPUT = true
+				}
+				
+			}
+			if (Rules[R].Logic == "AND")
+			{
+				if (OUTPUT == false && ruleAccept == false)
+				{
+					OUTPUT = false
+				}
+				else if (OUTPUT == false && ruleAccept == true)
+				{
+					OUTPUT = false
+				}
+				else if (OUTPUT == true && ruleAccept == false)
+				{
+					OUTPUT = false
+				}
+				else if (OUTPUT == true && ruleAccept == true)
+				{
+					OUTPUT = true
+				}
+				
+			}
+			if (Rules[R].Logic == "EQUALS")
+			{
+				if (OUTPUT == ruleAccept)
+				{
+					OUTPUT = true
+				}
+				else if (OUTPUT != ruleAccept)
+				{
+					OUTPUT = false
+					
+				}
+			}
+			if (Rules[R].Logic == "XOR")
+			{
+				if (OUTPUT == ruleAccept)
+				{
+					OUTPUT = false
+				}
+				else if (OUTPUT != ruleAccept)
+				{
+					OUTPUT = true
+				}
+			}
+			if (Rules[R].Out == false)
+			{
+				OUTPUT = !OUTPUT
+			}
+		}
+		newstrip.push(OUTPUT)
+	}
+	StripPixels.push(newstrip)
+	//console.log(newstrip)
+	StripNumber = StripNumber + 1
+
+
+
+
+
+
+
+}//this here ends the if block
+
+
+	if (displayCursor == true)
+	{
+		cursorFrame++;
+		canvas.fillStyle = "#000000"
+		prevY = cursorY
+		prevX = cursorX
+		prevEnabled = StripPixels[cursorY][cursorX]
+		window.scrollTo(cursorX-RowWidth/4,cursorY)
+		if (cursorMoveFrames <= cursorFrame)
+		{
+			if (GoUp && cursorY > 0)
+			{
+				if (!mazeMode || StripPixels[cursorY-1][cursorX] == mazeCol	)
+				{
+					if (!prevEnabled)
+					{
+						canvas.fillStyle = "#000000"
+						canvas.fillRect(prevX,prevY,1,1)
+					}
+					if (prevEnabled)
+					{
+						canvas.fillStyle = "#ffffff"
+						canvas.fillRect(prevX,prevY,1,1)
+					}
+					cursorY = cursorY - 1
+				}
+			}
+			if (GoDown && cursorY < screen.height-1)
+			{
+				if (!mazeMode || StripPixels[cursorY+1][cursorX] == mazeCol)
+				{
+					if (!prevEnabled)
+					{
+						canvas.fillStyle = "#000000"
+						canvas.fillRect(prevX,prevY,1,1)
+					}
+					if (prevEnabled)
+					{
+						canvas.fillStyle = "#ffffff"
+						canvas.fillRect(prevX,prevY,1,1)
+					}
+					cursorY = cursorY + 1
+				}
+			}
+			if (GoLeft)
+			{
+				if (!mazeMode || StripPixels[cursorY][(cursorX - 1 + (RowWidth+1)) % (RowWidth+1)] == mazeCol)
+				{
+					if (!prevEnabled)
+					{
+						canvas.fillStyle = "#000000"
+						canvas.fillRect(prevX,prevY,1,1)
+					}
+					if (prevEnabled)
+					{
+						canvas.fillStyle = "#ffffff"
+						canvas.fillRect(prevX,prevY,1,1)
+					}
+					cursorX = (cursorX - 1 + (RowWidth+1)) % (RowWidth+1)	
+				}
+			}
+			if (GoRight)
+			{
+				if (!mazeMode || StripPixels[cursorY][(cursorX + 1 + (RowWidth+1)) % (RowWidth+1)] == mazeCol)
+				{
+					if (!prevEnabled)
+					{
+						canvas.fillStyle = "#000000"
+						canvas.fillRect(prevX,prevY,1,1)
+					}
+					if (prevEnabled)
+					{
+						canvas.fillStyle = "#ffffff"
+						canvas.fillRect(prevX,prevY,1,1)
+					}
+					cursorX = (cursorX + 1 + (RowWidth+1)) % (RowWidth+1)
+				}
+			}
+			cursorFrame = 0
+		}
+		if (StripPixels[cursorY][cursorX] == true)
+		{
+			canvas.fillStyle = "#ff0000"
+			canvas.fillRect(cursorX,cursorY,1,1)
+		}
+		if (StripPixels[cursorY][cursorX] == false)
+		{
+			canvas.fillStyle = "#00ff00"
+			canvas.fillRect(cursorX,cursorY,1,1)
+		}
+		canvas.fillStyle = "#000000"
+	}
+
+}
+
+
+
+
+
+//examples: 
+
+//[{"Tags":[],"CellData":[[0,false,0],[-1,true,0],[1,true,0]],"Out":true,"Logic":"OR"},{"Tags":[],"CellData":[[0,true,0],[-1,true,0],[1,true,0]],"Out":true,"Logic":"XOR"},{"Tags":[],"CellData":[[1,false,2],[-1,false,2]],"Out":true,"Logic":"OR"},{"Tags":[],"CellData":[[0,true,0],[0,true,1]],"Out":true,"Logic":"EQUALS"},{"Tags":[],"CellData":[[0,true,1],[0,false,2],[0,false,3]],"Out":true,"Logic":"XOR"}]
+
+//[{"Tags":["TrueAboveTop"],"CellData":[[0,true,0]],"Out":true,"Logic":"OR"},{"Tags":["TrueAboveTop"],"CellData":[[-1,false,2],[0,true,1],[0,false,1]],"Out":true,"Logic":"EQUALS"},{"Tags":["TrueAboveTop"],"CellData":[[1,false,0]],"Out":true,"Logic":"XOR"},{"Tags":["TrueAboveTop"],"CellData":[[-1,false,0]],"Out":true,"Logic":"XOR"}]
+
+
+//deep catacombs
+//[{"Tags":[],"CellData":[[-1,false,0],[0,false,0],[1,true,0]],"Out":true,"Logic":"OVERWRITE"},{"Tags":[],"CellData":[[-1,true,0],[0,false,0],[1,false,0]],"Out":true,"Logic":"OR"},{"Tags":[],"CellData":[[-1,false,1],[0,false,1],[1,true,1]],"Out":true,"Logic":"OR"},{"Tags":[],"CellData":[[-1,true,1],[0,false,1],[1,false,1]],"Out":true,"Logic":"OR"},{"Tags":[],"CellData":[[-1,false,3],[0,true,2],[1,false,3]],"Out":false,"Logic":"XOR"},{"Tags":[],"CellData":[[-1,false,1],[0,true,1],[1,false,1]],"Out":false,"Logic":"EQUALS"},{"Tags":[],"CellData":[[-1,false,1],[0,true,1],[1,false,1]],"Out":false,"Logic":"EQUALS"},{"Tags":[],"CellData":[[-1,false,2],[1,false,2]],"Out":false,"Logic":"EQUALS"},{"Tags":[],"CellData":[[-1,false,0],[1,false,0]],"Out":false,"Logic":"XOR"},{"Tags":[],"CellData":[[0,true,4],[1,false,2],[-1,false,2]],"Out":true,"Logic":"XOR"},{"Tags":[],"CellData":[[0,true,0],[2,false,0],[-2,false,0]],"Out":true,"Logic":"OR"},{"Tags":[],"CellData":[[0,true,0],[1,false,0],[-1,false,0]],"Out":true,"Logic":"OR"},{"Tags":[],"CellData":[[0,true,5],[4,false,5],[-4,false,5]],"Out":true,"Logic":"OR"},{"Tags":[],"CellData":[[0,false,6],[4,true,2],[-4,true,2]],"Out":true,"Logic":"OR"},{"Tags":[],"CellData":[[0,false,2],[3,true,0],[-3,true,0]],"Out":true,"Logic":"EQUALS"},{"Tags":[],"CellData":[[0,false,2],[3,true,0],[-3,true,0]],"Out":true,"Logic":"XOR"},{"Tags":[],"CellData":[[0,false,6],[3,true,3],[-3,true,3]],"Out":false,"Logic":"OR"},{"Tags":[],"CellData":[[0,false,2],[3,true,4],[-3,true,4]],"Out":true,"Logic":"OR"}]
+
+
+
+
+</script>

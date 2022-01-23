@@ -1,0 +1,155 @@
+<canvas id="screen" width="1000" height="1000"/>
+
+
+<script>
+var screen = document.getElementById('screen');
+var canvas = screen.getContext('2d');
+var fps = 200
+setInterval(Main, 1000/fps);
+//fv = final velocity
+//m = mass
+//v = initial velocity
+//p = position
+
+//m1 * v1 + m2 * v2 = m1 * fv1 + m2 * fv2
+//m1 * (v1 - fv1) = -m2 * (v2 - fv2)
+
+//fv1 = ((m1 - m2) * v1) / COM + 2 * m2 * v2 / COM
+//fv2 = ((m1 - m2) * v2) / COM + 2 * m1 * v1 / COM
+
+
+
+var Circles = []
+Circles.push({
+		x: 100,
+		y: 100,
+		vx: -1.8,
+		vy: 0,
+		rad: 10,
+		mass: 4,
+		elas: 1
+	})
+
+Circles.push({
+		x: 70,
+		y: 100,
+		vx: 0.2,
+		vy: 0,
+		rad: 10,
+		mass: 6,
+		elas: 1
+	})
+
+
+
+
+
+
+function collision(C1,C2,elas) { 
+	//if you wanna do elastics, remember momentum is preserved but kinetic energy is lost
+	//so uh
+	//this function only covers momentum
+	//i will have to implement new functionality
+
+	var dx = C1.x - C2.x //Calculates the X-distance between the two thingies
+	var dy = C1.y - C2.y //Calculates the Y-distance between the two thingies
+	var d = Math.sqrt(dx * dx + dy * dy) //calculates the real distance between the two thingies
+	var nx = dx / d //...gets the normalized x component of the vector, I think?
+	var ny = dy / d //...that, but for Y?
+
+	//ok wait we can do this
+	//resulting velocity relative to COM multiplicatively decreases as elasticity decreases
+	//e.g. if 2 boxes travel towards each other at 10 m/s, at 0.43 elasticity, they go away from each other at 10*0.43 ms
+	//so just find velocity relative to the COM velocity, multiply that by the elasticity, then add the COM velocity back to the equation
+	
+	
+	//now this is getting a bit complicated but this moves the circles out of each other if they clip inside
+	var s = C1.rad + C2.rad - d //finds the distance between the surfaces of the two circles
+	C1.x += nx * s / 2 //moves circle 1 outside of circle 2 on the x coord
+	C1.y += ny * s / 2 //moves circle 1 outside of circle 2 on the y coord
+	C2.x -= nx * s / 2 //do that but for circle 2's
+	C2.y -= ny * s / 2 //same here but for y
+	
+	var COMVX = (C1.vx * C1.mass + C2.vx * C2.mass) / (C1.mass + C2.mass)
+	console.log(COMVX)
+	var COMVY = (C1.vy * C1.mass + C2.vy * C2.mass) / (C1.mass + C2.mass)
+
+
+	//ok i do not understand the physics behind it yet but here you go
+    	var k = -2 * ((C2.vx - C1.vx) * nx + (C2.vy - C1.vy) * ny) / (1/C1.mass + 1/C2.mass);
+
+
+    	C1.vx -= k * nx / C1.mass; 
+    	C1.vy -= k * ny / C1.mass;
+    	C2.vx += k * nx / C2.mass;
+    	C2.vy += k * ny / C2.mass;
+	var C1RelativeVX = (C1.vx - COMVX) * elas
+	var C2RelativeVX = (C2.vx - COMVX) * elas
+	var C1RelativeVY = (C1.vy - COMVY) * elas
+	var C2RelativeVY = (C2.vy - COMVY) * elas
+	C1.vx = C1RelativeVX + COMVX
+	C2.vx = C2RelativeVX + COMVX
+	C1.vy = C1RelativeVY + COMVY
+	C2.vy = C2RelativeVY + COMVY
+
+
+	//condensed all of those into this
+	//C1.vx = ((C1.vx - (k * nx / C1.mass)) - COMVX) * elas + COMVX 
+	//C1.vy = ((C1.vy - (k * ny / C1.mass)) - COMVY) * elas + COMVY
+	//C2.vx = ((C2.vx + (k * nx / C2.mass)) - COMVX) * elas + COMVX
+	//C2.vy = ((C2.vy + (k * ny / C2.mass)) - COMVY) * elas + COMVY
+
+
+	
+}
+var paths = []
+function Main() {
+	requestAnimationFrame(draw)
+}
+function draw() {
+	canvas.fillStyle = "#ffffff"
+	canvas.fillRect(0,0,screen.width,screen.height)
+	var COMX = 0
+	var COMY = 0
+	var TM = 0
+	var N = 0
+	for (var i = 0; i < Circles.length; i++)
+	{
+		canvas.beginPath()
+		canvas.arc(Circles[i].x,Circles[i].y,Circles[i].rad,0,2*Math.PI)
+		canvas.stroke()
+		Circles[i].x = Circles[i].x + Circles[i].vx / fps
+		Circles[i].y = Circles[i].y + Circles[i].vy / fps
+		COMX = COMX + Circles[i].x * Circles[i].mass
+		COMY = COMY + Circles[i].y * Circles[i].mass
+		TM = TM + Circles[i].mass 
+		N = N + 1
+		for (var j = 0; j < Circles.length; j++)
+		{
+			if (i != j)	
+			{
+				var dx = Circles[i].x - Circles[j].x
+				var dy = Circles[i].y - Circles[j].y
+				var dist = Math.sqrt(dx*dx+dy*dy)
+				if (dist < Circles[i].rad + Circles[j].rad)
+				{
+					collision(Circles[i],Circles[j],1)
+				}
+			}
+		}
+	}
+	COMX = COMX / TM
+	COMY = COMY / TM
+	paths.push([COMX,COMY])
+	canvas.fillStyle = "#000000"
+	canvas.fillRect(COMX-2.5,COMY-2.5,5,5)
+	for (var i = 0; i < paths.length; i++)
+	{
+		canvas.fillRect(paths[i][0]-1,paths[i][1]-1,2,2)
+	}
+}
+
+
+
+
+</script>
